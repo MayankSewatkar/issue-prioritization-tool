@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PriorityOS — Issue Triage & Ranking System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0f4ff', 100: '#dbe4ff', 500: '#4361ee', 600: '#3a0ca3', 700: '#2d0087' },
+            must:   '#ef4444',
+            should: '#f59e0b',
+            could:  '#3b82f6',
+            wont:   '#9ca3af',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .tab-active { border-bottom: 2px solid #4361ee; color: #4361ee; }
+    .card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 20px; }
+    .badge-must   { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
+    .badge-should { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+    .badge-could  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-wont   { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+    .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; }
+    .rice-high   { color: #16a34a; font-weight: 700; }
+    .rice-med    { color: #d97706; font-weight: 700; }
+    .rice-low    { color: #9ca3af; font-weight: 600; }
+    .source-tag  { font-size: 11px; background: #f3f4f6; color: #6b7280; padding: 2px 7px; border-radius: 4px; }
+    .tier-escalate { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+    .tier-sprint   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .tier-future   { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+    .tier-badge    { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; display: inline-block; }
+    .progress-bar  { height: 6px; border-radius: 3px; background: #e5e7eb; }
+    .progress-fill { height: 6px; border-radius: 3px; transition: width 0.6s ease; }
+    input, select, textarea { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 14px; width: 100%; outline: none; transition: border-color 0.2s; }
+    input:focus, select:focus, textarea:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.1); }
+    label { font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; display: block; }
+    .btn-primary   { background: #4361ee; color: white; padding: 9px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.2s; }
+    .btn-primary:hover { background: #3a0ca3; }
+    .btn-secondary { background: white; color: #374151; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 13px; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
+    .btn-secondary:hover { background: #f3f4f6; }
+    .btn-sm        { padding: 5px 12px; font-size: 12px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal         { background: white; border-radius: 16px; width: 100%; max-width: 560px; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .step-dot      { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .step-active   { background: #4361ee; color: white; }
+    .step-done     { background: #dcfce7; color: #16a34a; }
+    .step-inactive { background: #f3f4f6; color: #9ca3af; }
+    .animate-slide { animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .tooltip { position: relative; cursor: help; }
+    .tooltip:hover .tooltip-text { display: block; }
+    .tooltip-text { display: none; position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; white-space: nowrap; z-index: 10; }
+    .confidence-bar { display: flex; gap: 4px; }
+    .conf-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .metric-card { background: white; border-radius: 10px; border: 1px solid #e5e7eb; padding: 16px 20px; }
+    .empty-state { text-align: center; padding: 48px 20px; color: #9ca3af; }
+    .issue-row { border-bottom: 1px solid #f3f4f6; padding: 14px 0; transition: background 0.1s; }
+    .issue-row:last-child { border-bottom: none; }
+    .issue-row:hover { background: #fafafa; margin: 0 -8px; padding: 14px 8px; border-radius: 8px; }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #f1f5f9; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="font-700 text-gray-900 text-base font-bold leading-tight">PriorityOS</div>
+        <div class="text-xs text-gray-400 leading-tight">MoSCoW → RICE Issue Triage System</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="text-xs text-gray-400">Built for <span class="font-semibold text-gray-600">B2B SaaS Teams</span></div>
+      <button onclick="openAddIssue()" class="btn-primary btn-sm">+ Add Issue</button>
+    </div>
+  </div>
+  <!-- TABS -->
+  <div class="max-w-6xl mx-auto px-6 flex gap-0">
+    <button onclick="switchTab('intake')"   id="tab-intake"   class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all tab-active">Intake</button>
+    <button onclick="switchTab('moscow')"   id="tab-moscow"   class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">MoSCoW</button>
+    <button onclick="switchTab('rice')"     id="tab-rice"     class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">RICE Scoring</button>
+    <button onclick="switchTab('backlog')"  id="tab-backlog"  class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Backlog</button>
+    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Dashboard</button>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+
+<!-- ═══════════════════ TAB: INTAKE ═══════════════════ -->
+<div id="view-intake" class="animate-slide">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900">Issue Intake Queue</h2>
+      <p class="text-sm text-gray-500 mt-1">All incoming issues from support, analytics, sales, and internal stakeholders.</p>
+    </div>
+    <button onclick="loadSampleData()" class="btn-secondary btn-sm">Load Sample Data</button>
+  </div>
+
+  <!-- Pipeline steps -->
+  <div class="card mb-6">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <div class="step-dot step-active">1</div>
+        <span class="text-sm font-medium text-brand-500">Intake</span>
+      </div>
+      <div class="flex-1 h-px bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="step-dot step-inactive">2</div>
+        <span class="text-sm font-medium text-gray-400">MoSCoW Filter</span>
+      </div>
+      <div class="flex-1 h-px bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="step-dot step-inactive">3</div>
+        <span class="text-sm font-medium text-gray-400">RICE Score</span>
+      </div>
+      <div class="flex-1 h-px bg-gray-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="step-dot step-inactive">4</div>
+        <span class="text-sm font-medium text-gray-400">Prioritized Backlog</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="metric-card">
+      <div class="text-2xl font-bold text-gray-900" id="stat-total">0</div>
+      <div class="text-xs text-gray-500 mt-1">Total Issues</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-2xl font-bold text-amber-600" id="stat-unclassified">0</div>
+      <div class="text-xs text-gray-500 mt-1">Awaiting Triage</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-2xl font-bold text-green-600" id="stat-forwarded">0</div>
+      <div class="text-xs text-gray-500 mt-1">Forwarded to RICE</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-2xl font-bold text-gray-400" id="stat-eliminated">0</div>
+      <div class="text-xs text-gray-500 mt-1">Eliminated (Noise)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="intake-list">
+      <div class="empty-state" id="intake-empty">
+        <div class="text-4xl mb-3">📋</div>
+        <div class="font-medium text-gray-600 mb-1">No issues yet</div>
+        <div class="text-sm">Click "Add Issue" or "Load Sample Data" to get started</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TAB: MoSCoW ═══════════════════ -->
+<div id="view-moscow" class="animate-slide hidden">
+  <div class="mb-6">
+    <h2 class="text-xl font-bold text-gray-900">MoSCoW Classification</h2>
+    <p class="text-sm text-gray-500 mt-1">Stage 1: Classify each issue. Only MUST HAVE and top SHOULD HAVE advance to RICE scoring.</p>
+  </div>
+
+  <!-- Legend -->
+  <div class="grid grid-cols-4 gap-3 mb-6">
+    <div class="card border-l-4 border-l-red-400 py-3">
+      <div class="flex items-center gap-2 mb-1"><span class="badge badge-must">Must Have</span></div>
+      <div class="text-xs text-gray-500">Revenue-critical, SLA breach, core function broken</div>
+    </div>
+    <div class="card border-l-4 border-l-amber-400 py-3">
+      <div class="flex items-center gap-2 mb-1"><span class="badge badge-should">Should Have</span></div>
+      <div class="text-xs text-gray-500">Important, workaround exists, affects >10% users</div>
+    </div>
+    <div class="card border-l-4 border-l-blue-400 py-3">
+      <div class="flex items-center gap-2 mb-1"><span class="badge badge-could">Could Have</span></div>
+      <div class="text-xs text-gray-500">Nice to have, low urgency, <5% impact</div>
+    </div>
+    <div class="card border-l-4 border-l-gray-300 py-3">
+      <div class="flex items-center gap-2 mb-1"><span class="badge badge-wont">Won't Have</span></div>
+      <div class="text-xs text-gray-500">Noise, out of scope, duplicate, single low-value request</div>
+    </div>
+  </div>
+
+  <div class="card" id="moscow-list">
+    <div class="empty-state" id="moscow-empty">
+      <div class="text-4xl mb-3">🏷️</div>
+      <div class="font-medium text-gray-600 mb-1">No issues to classify</div>
+      <div class="text-sm">Add issues in the Intake tab first</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TAB: RICE ═══════════════════ -->
+<div id="view-rice" class="animate-slide hidden">
+  <div class="mb-6">
+    <h2 class="text-xl font-bold text-gray-900">RICE Scoring</h2>
+    <p class="text-sm text-gray-500 mt-1">Stage 2: Score forwarded issues. RICE = (Reach × Impact × Confidence) ÷ Effort</p>
+  </div>
+
+  <!-- RICE legend -->
+  <div class="grid grid-cols-4 gap-3 mb-6">
+    <div class="metric-card">
+      <div class="font-semibold text-sm text-gray-700 mb-1">Reach</div>
+      <div class="text-xs text-gray-500">% or # of accounts affected per sprint</div>
+      <div class="text-xs text-brand-500 mt-1 font-medium">1–10 scale</div>
+    </div>
+    <div class="metric-card">
+      <div class="font-semibold text-sm text-gray-700 mb-1">Impact</div>
+      <div class="text-xs text-gray-500">Effect on ROAS, conversion, retention</div>
+      <div class="text-xs text-brand-500 mt-1 font-medium">0.5 / 1 / 2 / 3</div>
+    </div>
+    <div class="metric-card">
+      <div class="font-semibold text-sm text-gray-700 mb-1">Confidence</div>
+      <div class="text-xs text-gray-500">Certainty in Reach + Impact estimates</div>
+      <div class="text-xs text-brand-500 mt-1 font-medium">20% / 50% / 80% / 100%</div>
+    </div>
+    <div class="metric-card">
+      <div class="font-semibold text-sm text-gray-700 mb-1">Effort</div>
+      <div class="text-xs text-gray-500">Eng + Design cost in person-weeks</div>
+      <div class="text-xs text-brand-500 mt-1 font-medium">0.5 / 1 / 2 / 4 / 8</div>
+    </div>
+  </div>
+
+  <div class="card" id="rice-list">
+    <div class="empty-state" id="rice-empty">
+      <div class="text-4xl mb-3">🎯</div>
+      <div class="font-medium text-gray-600 mb-1">No issues ready for scoring</div>
+      <div class="text-sm">Classify issues as MUST HAVE or SHOULD HAVE first</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TAB: BACKLOG ═══════════════════ -->
+<div id="view-backlog" class="animate-slide hidden">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900">Prioritized Backlog</h2>
+      <p class="text-sm text-gray-500 mt-1">Final ranked output. Sorted by RICE score descending.</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="filterBacklog('all')"     id="filter-all"     class="btn-secondary btn-sm bg-gray-100">All</button>
+      <button onclick="filterBacklog('escalate')" id="filter-escalate" class="btn-secondary btn-sm">🚨 Escalation</button>
+      <button onclick="filterBacklog('sprint')"   id="filter-sprint"   class="btn-secondary btn-sm">✅ Sprint</button>
+      <button onclick="filterBacklog('future')"   id="filter-future"   class="btn-secondary btn-sm">🔮 Future</button>
+    </div>
+  </div>
+
+  <!-- Escalation alert -->
+  <div id="escalation-alert" class="hidden mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+    <div class="text-red-500 text-lg">🚨</div>
+    <div>
+      <div class="font-semibold text-red-700 text-sm">Escalation Items Require Immediate Attention</div>
+      <div class="text-xs text-red-600 mt-1" id="escalation-count">0 issues scored ≥ 40 — assign owner within 24 hours</div>
+    </div>
+  </div>
+
+  <div class="card" id="backlog-list">
+    <div class="empty-state" id="backlog-empty">
+      <div class="text-4xl mb-3">📊</div>
+      <div class="font-medium text-gray-600 mb-1">Backlog is empty</div>
+      <div class="text-sm">Score issues in the RICE tab to populate the backlog</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TAB: DASHBOARD ═══════════════════ -->
+<div id="view-dashboard" class="animate-slide hidden">
+  <div class="mb-6">
+    <h2 class="text-xl font-bold text-gray-900">PM Dashboard</h2>
+    <p class="text-sm text-gray-500 mt-1">System health metrics and triage performance.</p>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="metric-card">
+      <div class="text-xs text-gray-500 mb-1">Noise Eliminated</div>
+      <div class="text-3xl font-bold text-green-600" id="kpi-noise">—</div>
+      <div class="text-xs text-gray-400 mt-1">Target: 50–80%</div>
+      <div class="progress-bar mt-2"><div class="progress-fill bg-green-400" id="kpi-noise-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="text-xs text-gray-500 mb-1">Issues in Escalation</div>
+      <div class="text-3xl font-bold text-red-600" id="kpi-escalation">0</div>
+      <div class="text-xs text-gray-400 mt-1">Target: &lt;5 active</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-xs text-gray-500 mb-1">Sprint Backlog</div>
+      <div class="text-3xl font-bold text-brand-500" id="kpi-sprint">0</div>
+      <div class="text-xs text-gray-400 mt-1">RICE score 20–39</div>
+    </div>
+    <div class="metric-card">
+      <div class="text-xs text-gray-500 mb-1">Pipeline Completion</div>
+      <div class="text-3xl font-bold text-gray-700" id="kpi-completion">0%</div>
+      <div class="text-xs text-gray-400 mt-1">Issues fully scored</div>
+    </div>
+  </div>
+
+  <!-- Classification breakdown -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="card">
+      <div class="font-semibold text-sm text-gray-700 mb-4">MoSCoW Distribution</div>
+      <div class="space-y-3" id="moscow-breakdown">
+        <div class="text-sm text-gray-400">No data yet</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="font-semibold text-sm text-gray-700 mb-4">RICE Tier Distribution</div>
+      <div class="space-y-3" id="rice-breakdown">
+        <div class="text-sm text-gray-400">No data yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Source breakdown -->
+  <div class="card mb-6">
+    <div class="font-semibold text-sm text-gray-700 mb-4">Issue Source Mix</div>
+    <div class="grid grid-cols-4 gap-4" id="source-breakdown">
+      <div class="text-sm text-gray-400">No data yet</div>
+    </div>
+  </div>
+
+  <!-- System overview -->
+  <div class="card">
+    <div class="font-semibold text-sm text-gray-700 mb-4">How This System Works</div>
+    <div class="grid grid-cols-4 gap-4">
+      <div class="text-center p-4 bg-gray-50 rounded-lg">
+        <div class="text-2xl mb-2">📥</div>
+        <div class="font-semibold text-xs text-gray-700 mb-1">Stage 1: Intake</div>
+        <div class="text-xs text-gray-500">Issues enter from support, analytics, sales, and internal stakeholders</div>
+      </div>
+      <div class="text-center p-4 bg-amber-50 rounded-lg">
+        <div class="text-2xl mb-2">🏷️</div>
+        <div class="font-semibold text-xs text-amber-700 mb-1">Stage 2: MoSCoW</div>
+        <div class="text-xs text-gray-500">Remove 50–80% noise. Only MUST + top SHOULD advance</div>
+      </div>
+      <div class="text-center p-4 bg-blue-50 rounded-lg">
+        <div class="text-2xl mb-2">🎯</div>
+        <div class="font-semibold text-xs text-blue-700 mb-1">Stage 3: RICE</div>
+        <div class="text-xs text-gray-500">Score filtered issues on Reach, Impact, Confidence, Effort</div>
+      </div>
+      <div class="text-center p-4 bg-green-50 rounded-lg">
+        <div class="text-2xl mb-2">📊</div>
+        <div class="font-semibold text-xs text-green-700 mb-1">Stage 4: Backlog</div>
+        <div class="text-xs text-gray-500">Ranked output: Escalation → Sprint → Future</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ═══════════════════ MODAL: ADD ISSUE ═══════════════════ -->
+<div id="modal-add" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-lg font-bold text-gray-900">Add New Issue</h3>
+      <button onclick="closeModal('modal-add')" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label>Issue Title *</label>
+        <input id="input-title" type="text" placeholder="e.g. ROAS dashboard returns 0 for all accounts" />
+      </div>
+      <div>
+        <label>Description</label>
+        <textarea id="input-desc" rows="2" placeholder="Brief context about the issue..."></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label>Source</label>
+          <select id="input-source">
+            <option value="support">Customer Support</option>
+            <option value="analytics">Product Analytics</option>
+            <option value="sales">Sales Feedback</option>
+            <option value="internal">Internal Stakeholder</option>
+            <option value="cs">Customer Success</option>
+          </select>
+        </div>
+        <div>
+          <label>Customer Tier</label>
+          <select id="input-tier">
+            <option value="standard">Standard</option>
+            <option value="vip">VIP / Enterprise</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label>AI Classification Hint</label>
+        <select id="input-hint">
+          <option value="">— Let me classify manually —</option>
+          <option value="must">Likely MUST HAVE (revenue/stability critical)</option>
+          <option value="should">Likely SHOULD HAVE (important, has workaround)</option>
+          <option value="could">Likely COULD HAVE (nice to have)</option>
+          <option value="wont">Likely WON'T HAVE (out of scope / noise)</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6 justify-end">
+      <button onclick="closeModal('modal-add')" class="btn-secondary">Cancel</button>
+      <button onclick="addIssue()" class="btn-primary">Add to Queue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: RICE SCORING ═══════════════════ -->
+<div id="modal-rice" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 600px;">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-lg font-bold text-gray-900">RICE Score This Issue</h3>
+      <button onclick="closeModal('modal-rice')" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+    </div>
+    <div id="rice-modal-title" class="text-sm text-gray-500 mb-5"></div>
+
+    <div class="space-y-5">
+      <div>
+        <label class="flex items-center gap-2">
+          Reach
+          <span class="tooltip text-gray-400 text-xs">ℹ️<span class="tooltip-text">How many accounts affected per sprint?</span></span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="rice-reach" min="1" max="10" value="5" oninput="updateRicePreview()" class="flex-1" style="width:auto; border:none; padding:0; box-shadow:none;" />
+          <span id="rice-reach-val" class="font-bold text-brand-500 w-6 text-center">5</span>
+        </div>
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1 = &lt;5% accounts</span><span>5 = ~40%</span><span>10 = >80%</span>
+        </div>
+      </div>
+
+      <div>
+        <label>Impact on Core Metrics (ROAS, Conversion, Retention)</label>
+        <div class="grid grid-cols-4 gap-2 mt-1">
+          <button onclick="setImpact(0.5)" id="imp-05" class="btn-secondary btn-sm text-center">0.5<div class="text-xs font-normal text-gray-400">Minimal</div></button>
+          <button onclick="setImpact(1)"   id="imp-1"  class="btn-secondary btn-sm text-center">1.0<div class="text-xs font-normal text-gray-400">Moderate</div></button>
+          <button onclick="setImpact(2)"   id="imp-2"  class="btn-secondary btn-sm text-center">2.0<div class="text-xs font-normal text-gray-400">Significant</div></button>
+          <button onclick="setImpact(3)"   id="imp-3"  class="btn-secondary btn-sm text-center">3.0<div class="text-xs font-normal text-gray-400">Massive</div></button>
+        </div>
+        <input type="hidden" id="rice-impact" value="1" />
+      </div>
+
+      <div>
+        <label>Confidence in Estimates</label>
+        <div class="grid grid-cols-4 gap-2 mt-1">
+          <button onclick="setConf(20)"  id="conf-20"  class="btn-secondary btn-sm text-center">20%<div class="text-xs font-normal text-gray-400">Guess</div></button>
+          <button onclick="setConf(50)"  id="conf-50"  class="btn-secondary btn-sm text-center">50%<div class="text-xs font-normal text-gray-400">Partial data</div></button>
+          <button onclick="setConf(80)"  id="conf-80"  class="btn-secondary btn-sm text-center">80%<div class="text-xs font-normal text-gray-400">Strong signal</div></button>
+          <button onclick="setConf(100)" id="conf-100" class="btn-secondary btn-sm text-center">100%<div class="text-xs font-normal text-gray-400">Hard data</div></button>
+        </div>
+        <input type="hidden" id="rice-confidence" value="80" />
+      </div>
+
+      <div>
+        <label>Effort (person-weeks, eng + design)</label>
+        <div class="grid grid-cols-5 gap-2 mt-1">
+          <button onclick="setEffort(0.5)" id="eff-05" class="btn-secondary btn-sm text-center">0.5<div class="text-xs font-normal text-gray-400">&lt;1 day</div></button>
+          <button onclick="setEffort(1)"   id="eff-1"  class="btn-secondary btn-sm text-center">1<div class="text-xs font-normal text-gray-400">~3 days</div></button>
+          <button onclick="setEffort(2)"   id="eff-2"  class="btn-secondary btn-sm text-center">2<div class="text-xs font-normal text-gray-400">1 week</div></button>
+          <button onclick="setEffort(4)"   id="eff-4"  class="btn-secondary btn-sm text-center">4<div class="text-xs font-normal text-gray-400">2–3 wks</div></button>
+          <button onclick="setEffort(8)"   id="eff-8"  class="btn-secondary btn-sm text-center">8<div class="text-xs font-normal text-gray-400">Full sprint</div></button>
+        </div>
+        <input type="hidden" id="rice-effort" value="2" />
+      </div>
+
+      <!-- VIP override -->
+      <div class="flex items-center gap-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+        <input type="checkbox" id="rice-vip" onchange="updateRicePreview()" class="w-4 h-4 accent-amber-500" />
+        <label for="rice-vip" class="text-sm text-amber-700 font-medium cursor-pointer">Apply 2× VIP multiplier (enterprise / high-ARR account)</label>
+      </div>
+    </div>
+
+    <!-- Live RICE preview -->
+    <div class="mt-5 bg-gray-50 rounded-lg p-4 flex items-center justify-between">
+      <div>
+        <div class="text-xs text-gray-500 mb-1">RICE Score</div>
+        <div class="text-3xl font-bold" id="rice-preview-score">—</div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 mb-1">Tier</div>
+        <div id="rice-preview-tier" class="text-sm font-semibold">—</div>
+      </div>
+      <div class="text-xs text-gray-400 text-right">
+        <div id="rice-preview-formula" class="font-mono">—</div>
+        <div class="mt-1">Reach × Impact × Conf ÷ Effort</div>
+      </div>
+    </div>
+
+    <input type="hidden" id="rice-modal-id" />
+    <div class="flex gap-3 mt-5 justify-end">
+      <button onclick="closeModal('modal-rice')" class="btn-secondary">Cancel</button>
+      <button onclick="saveRiceScore()" class="btn-primary">Save Score</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// DATA STORE
+// ════════════════════════════════════════════
+let issues = [];
+let idCounter = 1;
+let riceImpact = 1, riceConf = 80, riceEffort = 2;
+let backlogFilter = 'all';
+
+const SOURCES = { support: 'Support', analytics: 'Analytics', sales: 'Sales', internal: 'Internal', cs: 'CS Escalation' };
+const SOURCE_COLORS = { support: 'bg-blue-100 text-blue-700', analytics: 'bg-purple-100 text-purple-700', sales: 'bg-green-100 text-green-700', internal: 'bg-gray-100 text-gray-600', cs: 'bg-red-100 text-red-700' };
+
+function moscow(cls) {
+  if (cls === 'must') return '<span class="badge badge-must">Must Have</span>';
+  if (cls === 'should') return '<span class="badge badge-should">Should Have</span>';
+  if (cls === 'could') return '<span class="badge badge-could">Could Have</span>';
+  if (cls === 'wont') return '<span class="badge badge-wont">Won\'t Have</span>';
+  return '<span class="badge" style="background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb">Unclassified</span>';
+}
+
+function riceScore(issue) {
+  if (!issue.rice) return null;
+  const r = issue.rice;
+  const reach = r.vip ? r.reach * 2 : r.reach;
+  return (reach * r.impact * (r.confidence / 100)) / r.effort;
+}
+
+function riceTier(score) {
+  if (score === null) return null;
+  if (score >= 40) return 'escalate';
+  if (score >= 20) return 'sprint';
+  return 'future';
+}
+
+function tierBadge(score) {
+  const t = riceTier(score);
+  if (t === 'escalate') return '<span class="tier-badge tier-escalate">🚨 Escalation</span>';
+  if (t === 'sprint')   return '<span class="tier-badge tier-sprint">✅ Sprint</span>';
+  return '<span class="tier-badge tier-future">🔮 Future</span>';
+}
+
+function riceClass(score) {
+  if (score >= 40) return 'rice-high';
+  if (score >= 20) return 'rice-med';
+  return 'rice-low';
+}
+
+function sourceTag(src) {
+  const cls = SOURCE_COLORS[src] || 'bg-gray-100 text-gray-600';
+  return `<span class="source-tag ${cls}">${SOURCES[src] || src}</span>`;
+}
+
+function vipBadge(tier) {
+  return tier === 'vip' ? '<span class="badge" style="background:#fef9c3;color:#92400e;border:1px solid #fde68a;font-size:10px;">VIP</span>' : '';
+}
+
+// ════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════
+function switchTab(name) {
+  ['intake','moscow','rice','backlog','dashboard'].forEach(t => {
+    document.getElementById('view-' + t).classList.add('hidden');
+    document.getElementById('tab-' + t).classList.remove('tab-active');
+  });
+  document.getElementById('view-' + name).classList.remove('hidden');
+  document.getElementById('tab-' + name).classList.add('tab-active');
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════
+function renderAll() {
+  renderIntake();
+  renderMoscow();
+  renderRice();
+  renderBacklog();
+  renderDashboard();
+  updateStats();
+}
+
+function updateStats() {
+  const total = issues.length;
+  const unclassified = issues.filter(i => !i.moscow).length;
+  const forwarded = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
+  const eliminated = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-unclassified').textContent = unclassified;
+  document.getElementById('stat-forwarded').textContent = forwarded;
+  document.getElementById('stat-eliminated').textContent = eliminated;
+}
+
+function renderIntake() {
+  const el = document.getElementById('intake-list');
+  const empty = document.getElementById('intake-empty');
+  if (!issues.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
+  empty.style.display = 'none';
+  el.innerHTML = issues.map(i => `
+    <div class="issue-row">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            ${vipBadge(i.tier)}
+            ${sourceTag(i.source)}
+            ${i.hint ? `<span class="text-xs text-gray-400 italic">Suggested: ${i.hint}</span>` : ''}
+          </div>
+          ${i.desc ? `<div class="text-xs text-gray-500 mt-1">${i.desc}</div>` : ''}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          ${moscow(i.moscow)}
+          <button onclick="switchTab('moscow')" class="btn-secondary btn-sm">Classify →</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMoscow() {
+  const el = document.getElementById('moscow-list');
+  const empty = document.getElementById('moscow-empty');
+  if (!issues.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
+  empty.style.display = 'none';
+  el.innerHTML = issues.map(i => `
+    <div class="issue-row">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            ${vipBadge(i.tier)}
+            ${sourceTag(i.source)}
+          </div>
+          ${i.desc ? `<div class="text-xs text-gray-500 mt-0.5">${i.desc}</div>` : ''}
+          ${i.hint ? `<div class="text-xs text-brand-500 mt-1">💡 Hint: ${i.hint}</div>` : ''}
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          ${moscow(i.moscow)}
+          <div class="flex gap-1">
+            <button onclick="classify(${i.id}, 'must')"   class="btn-secondary btn-sm ${i.moscow==='must'   ? 'bg-red-50 border-red-300 text-red-600' : ''}">M</button>
+            <button onclick="classify(${i.id}, 'should')" class="btn-secondary btn-sm ${i.moscow==='should' ? 'bg-amber-50 border-amber-300 text-amber-600' : ''}">S</button>
+            <button onclick="classify(${i.id}, 'could')"  class="btn-secondary btn-sm ${i.moscow==='could'  ? 'bg-blue-50 border-blue-300 text-blue-600' : ''}">C</button>
+            <button onclick="classify(${i.id}, 'wont')"   class="btn-secondary btn-sm ${i.moscow==='wont'   ? 'bg-gray-100 border-gray-300' : ''}">W</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderRice() {
+  const eligible = issues.filter(i => i.moscow === 'must' || i.moscow === 'should');
+  const el = document.getElementById('rice-list');
+  const empty = document.getElementById('rice-empty');
+  if (!eligible.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
+  empty.style.display = 'none';
+  el.innerHTML = eligible.map(i => {
+    const score = riceScore(i);
+    return `
+    <div class="issue-row">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            ${vipBadge(i.tier)}
+            ${sourceTag(i.source)}
+            ${moscow(i.moscow)}
+          </div>
+          ${i.rice ? `
+            <div class="text-xs text-gray-500 mt-1 font-mono">
+              R:${i.rice.reach} × I:${i.rice.impact} × C:${i.rice.confidence}% ÷ E:${i.rice.effort}${i.rice.vip ? ' × 2 (VIP)' : ''}
+            </div>
+          ` : ''}
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          ${score !== null ? `
+            <div class="text-right">
+              <div class="text-xl font-bold ${riceClass(score)}">${score.toFixed(1)}</div>
+              ${tierBadge(score)}
+            </div>
+          ` : '<span class="text-xs text-gray-400">Not scored</span>'}
+          <button onclick="openRiceModal(${i.id})" class="btn-primary btn-sm">${score !== null ? 'Rescore' : 'Score →'}</button>
+        </div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function renderBacklog() {
+  const scored = issues
+    .filter(i => i.rice && (i.moscow === 'must' || i.moscow === 'should'))
+    .map(i => ({ ...i, score: riceScore(i) }))
+    .sort((a, b) => b.score - a.score);
+
+  const el = document.getElementById('backlog-list');
+  const empty = document.getElementById('backlog-empty');
+  const alert = document.getElementById('escalation-alert');
+  const countEl = document.getElementById('escalation-count');
+
+  const escalations = scored.filter(i => i.score >= 40);
+  if (escalations.length) {
+    alert.classList.remove('hidden');
+    countEl.textContent = `${escalations.length} issue${escalations.length > 1 ? 's' : ''} scored ≥ 40 — assign owner within 24 hours`;
+  } else { alert.classList.add('hidden'); }
+
+  document.getElementById('kpi-escalation').textContent = escalations.length;
+  document.getElementById('kpi-sprint').textContent = scored.filter(i => i.score >= 20 && i.score < 40).length;
+
+  const filtered = backlogFilter === 'all' ? scored : scored.filter(i => riceTier(i.score) === backlogFilter);
+
+  if (!filtered.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
+  empty.style.display = 'none';
+
+  el.innerHTML = `
+    <div class="grid grid-cols-12 gap-4 pb-2 mb-1 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+      <div class="col-span-1">#</div>
+      <div class="col-span-5">Issue</div>
+      <div class="col-span-2">Classification</div>
+      <div class="col-span-2 text-center">RICE Score</div>
+      <div class="col-span-2">Tier</div>
+    </div>
+    ${filtered.map((i, idx) => `
+      <div class="issue-row grid grid-cols-12 gap-4 items-center">
+        <div class="col-span-1 text-sm font-bold text-gray-300">${idx + 1}</div>
+        <div class="col-span-5">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            ${vipBadge(i.tier)}
+            ${sourceTag(i.source)}
+          </div>
+          ${i.desc ? `<div class="text-xs text-gray-400 mt-0.5">${i.desc}</div>` : ''}
+        </div>
+        <div class="col-span-2">${moscow(i.moscow)}</div>
+        <div class="col-span-2 text-center text-xl font-bold ${riceClass(i.score)}">${i.score.toFixed(1)}</div>
+        <div class="col-span-2">${tierBadge(i.score)}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderDashboard() {
+  const total = issues.length;
+  const classified = issues.filter(i => i.moscow).length;
+  const noise = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
+  const forwarded = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
+  const scored = issues.filter(i => i.rice).length;
+
+  const noisePct = classified ? Math.round(noise / classified * 100) : 0;
+  document.getElementById('kpi-noise').textContent = noisePct + '%';
+  document.getElementById('kpi-noise-bar').style.width = noisePct + '%';
+
+  const completionPct = forwarded ? Math.round(scored / forwarded * 100) : 0;
+  document.getElementById('kpi-completion').textContent = completionPct + '%';
+
+  // MoSCoW breakdown
+  const moscowEl = document.getElementById('moscow-breakdown');
+  const categories = [
+    { key: 'must',   label: 'Must Have',   cls: 'bg-red-400' },
+    { key: 'should', label: 'Should Have', cls: 'bg-amber-400' },
+    { key: 'could',  label: 'Could Have',  cls: 'bg-blue-400' },
+    { key: 'wont',   label: "Won't Have",  cls: 'bg-gray-300' },
+  ];
+  if (!total) { moscowEl.innerHTML = '<div class="text-sm text-gray-400">No data yet</div>'; }
+  else {
+    moscowEl.innerHTML = categories.map(c => {
+      const count = issues.filter(i => i.moscow === c.key).length;
+      const pct = classified ? Math.round(count / classified * 100) : 0;
+      return `
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-gray-600 w-24">${c.label}</div>
+          <div class="flex-1 progress-bar"><div class="progress-fill ${c.cls}" style="width:${pct}%"></div></div>
+          <div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // RICE tier breakdown
+  const riceEl = document.getElementById('rice-breakdown');
+  const scoredIssues = issues.filter(i => i.rice).map(i => ({ ...i, score: riceScore(i) }));
+  if (!scoredIssues.length) { riceEl.innerHTML = '<div class="text-sm text-gray-400">No data yet</div>'; }
+  else {
+    const tiers = [
+      { key: 'escalate', label: '🚨 Escalation', cls: 'bg-red-400', min: 40 },
+      { key: 'sprint',   label: '✅ Sprint',      cls: 'bg-green-400', min: 20 },
+      { key: 'future',   label: '🔮 Future',      cls: 'bg-gray-300', min: 0 },
+    ];
+    riceEl.innerHTML = tiers.map(t => {
+      const count = scoredIssues.filter(i => riceTier(i.score) === t.key).length;
+      const pct = scoredIssues.length ? Math.round(count / scoredIssues.length * 100) : 0;
+      return `
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-gray-600 w-24">${t.label}</div>
+          <div class="flex-1 progress-bar"><div class="progress-fill ${t.cls}" style="width:${pct}%"></div></div>
+          <div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Source breakdown
+  const srcEl = document.getElementById('source-breakdown');
+  if (!total) { srcEl.innerHTML = '<div class="text-sm text-gray-400">No data yet</div>'; }
+  else {
+    const srcs = ['support','analytics','sales','internal','cs'];
+    srcEl.innerHTML = srcs.map(s => {
+      const count = issues.filter(i => i.source === s).length;
+      if (!count) return '';
+      return `
+        <div class="text-center p-3 bg-gray-50 rounded-lg">
+          <div class="text-xl font-bold text-gray-800">${count}</div>
+          <div class="text-xs text-gray-500 mt-1">${SOURCES[s]}</div>
+        </div>
+      `;
+    }).filter(Boolean).join('');
+  }
+}
+
+// ════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════
+function classify(id, cls) {
+  const issue = issues.find(i => i.id === id);
+  if (issue) { issue.moscow = cls; renderAll(); }
+}
+
+function openAddIssue() { document.getElementById('modal-add').classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function addIssue() {
+  const title = document.getElementById('input-title').value.trim();
+  if (!title) { alert('Please enter an issue title.'); return; }
+  issues.push({
+    id: idCounter++,
+    title,
+    desc: document.getElementById('input-desc').value.trim(),
+    source: document.getElementById('input-source').value,
+    tier: document.getElementById('input-tier').value,
+    hint: document.getElementById('input-hint').value,
+    moscow: document.getElementById('input-hint').value || null,
+    rice: null,
+    createdAt: new Date()
+  });
+  document.getElementById('input-title').value = '';
+  document.getElementById('input-desc').value = '';
+  document.getElementById('input-hint').value = '';
+  closeModal('modal-add');
+  renderAll();
+}
+
+function openRiceModal(id) {
+  const issue = issues.find(i => i.id === id);
+  document.getElementById('rice-modal-id').value = id;
+  document.getElementById('rice-modal-title').textContent = issue.title;
+  // Reset selections
+  riceImpact = issue.rice?.impact || 1;
+  riceConf   = issue.rice?.confidence || 80;
+  riceEffort = issue.rice?.effort || 2;
+  document.getElementById('rice-reach').value = issue.rice?.reach || 5;
+  document.getElementById('rice-vip').checked = issue.rice?.vip || false;
+  document.getElementById('rice-impact').value = riceImpact;
+  document.getElementById('rice-confidence').value = riceConf;
+  document.getElementById('rice-effort').value = riceEffort;
+  highlightButtons();
+  updateRicePreview();
+  document.getElementById('modal-rice').classList.remove('hidden');
+}
+
+function setImpact(v) { riceImpact = v; document.getElementById('rice-impact').value = v; highlightButtons(); updateRicePreview(); }
+function setConf(v)   { riceConf   = v; document.getElementById('rice-confidence').value = v; highlightButtons(); updateRicePreview(); }
+function setEffort(v) { riceEffort = v; document.getElementById('rice-effort').value = v; highlightButtons(); updateRicePreview(); }
+
+function highlightButtons() {
+  [0.5,1,2,3].forEach(v => {
+    const el = document.getElementById('imp-' + String(v).replace('.',''));
+    if (el) el.className = `btn-secondary btn-sm text-center ${v === riceImpact ? 'bg-brand-100 border-brand-500 text-brand-500' : ''}`;
+  });
+  [20,50,80,100].forEach(v => {
+    const el = document.getElementById('conf-' + v);
+    if (el) el.className = `btn-secondary btn-sm text-center ${v === riceConf ? 'bg-brand-100 border-brand-500 text-brand-500' : ''}`;
+  });
+  [0.5,1,2,4,8].forEach(v => {
+    const el = document.getElementById('eff-' + String(v).replace('.',''));
+    if (el) el.className = `btn-secondary btn-sm text-center ${v === riceEffort ? 'bg-brand-100 border-brand-500 text-brand-500' : ''}`;
+  });
+}
+
+function updateRicePreview() {
+  const reach = parseInt(document.getElementById('rice-reach').value);
+  const vip   = document.getElementById('rice-vip').checked;
+  const effectiveReach = vip ? reach * 2 : reach;
+  document.getElementById('rice-reach-val').textContent = reach;
+  const score = (effectiveReach * riceImpact * (riceConf / 100)) / riceEffort;
+  document.getElementById('rice-preview-score').textContent = score.toFixed(1);
+  document.getElementById('rice-preview-score').className = 'text-3xl font-bold ' + riceClass(score);
+  const tier = riceTier(score);
+  const tierLabels = { escalate: '🚨 Escalation', sprint: '✅ Sprint', future: '🔮 Future' };
+  document.getElementById('rice-preview-tier').textContent = tier ? tierLabels[tier] : '—';
+  document.getElementById('rice-preview-formula').textContent = `${effectiveReach}${vip?'(VIP)':''} × ${riceImpact} × ${riceConf}% ÷ ${riceEffort}`;
+}
+
+function saveRiceScore() {
+  const id = parseInt(document.getElementById('rice-modal-id').value);
+  const issue = issues.find(i => i.id === id);
+  if (!issue) return;
+  issue.rice = {
+    reach: parseInt(document.getElementById('rice-reach').value),
+    impact: riceImpact,
+    confidence: riceConf,
+    effort: riceEffort,
+    vip: document.getElementById('rice-vip').checked
+  };
+  closeModal('modal-rice');
+  renderAll();
+}
+
+function filterBacklog(f) {
+  backlogFilter = f;
+  ['all','escalate','sprint','future'].forEach(k => {
+    const el = document.getElementById('filter-' + k);
+    if (el) el.className = `btn-secondary btn-sm ${k === f ? 'bg-gray-100' : ''}`;
+  });
+  renderBacklog();
+}
+
+// ════════════════════════════════════════════
+// SAMPLE DATA
+// ════════════════════════════════════════════
+function loadSampleData() {
+  const samples = [
+    { title: 'ROAS dashboard returns 0 for all enterprise accounts', desc: 'All enterprise clients reporting 0 ROAS since last deploy. Critical revenue metric.', source: 'support', tier: 'vip', moscow: 'must', rice: { reach: 10, impact: 3, confidence: 100, effort: 1, vip: false } },
+    { title: 'Attribution model produces inconsistent multi-touch results', desc: 'Last-click vs. linear attribution returning different counts on same data set.', source: 'analytics', tier: 'standard', moscow: 'must', rice: { reach: 7, impact: 3, confidence: 80, effort: 4, vip: false } },
+    { title: 'Ad spend sync delay >6 hours for Acme Corp (enterprise)', desc: 'Acme Corp ($40k MRR) reporting sync lag. SLA is 2 hours.', source: 'cs', tier: 'vip', moscow: 'must', rice: { reach: 2, impact: 3, confidence: 100, effort: 2, vip: true } },
+    { title: 'Bulk export CSV missing campaign_id and date columns', desc: 'Power users relying on export for downstream BI tools are affected.', source: 'support', tier: 'standard', moscow: 'should', rice: { reach: 4, impact: 1, confidence: 80, effort: 1, vip: false } },
+    { title: 'Filter presets do not persist across browser sessions', desc: 'Users have to reconfigure filters every login. High friction for daily users.', source: 'sales', tier: 'standard', moscow: 'should', rice: { reach: 7, impact: 1, confidence: 80, effort: 1, vip: false } },
+    { title: 'Onboarding step 3 has 62% drop-off rate in analytics', desc: 'Analytics alert flagged this week. Root cause unknown.', source: 'analytics', tier: 'standard', moscow: 'should', rice: { reach: 7, impact: 2, confidence: 50, effort: 2, vip: false } },
+    { title: 'Add dark mode to settings page', desc: 'Multiple users requested. No revenue impact identified.', source: 'support', tier: 'standard', moscow: 'could', rice: null },
+    { title: 'Support TikTok Ads as a data source', desc: 'One prospect asked about this during sales call.', source: 'sales', tier: 'standard', moscow: 'wont', rice: null },
+    { title: 'Page header color is slightly off-brand on mobile', desc: 'Minor visual regression noticed internally.', source: 'internal', tier: 'standard', moscow: 'wont', rice: null },
+    { title: 'Add tooltip explanations to ROAS metric cards', desc: 'Requested by new customers unfamiliar with attribution.', source: 'support', tier: 'standard', moscow: 'could', rice: null },
+  ];
+  issues = samples.map((s, i) => ({ ...s, id: idCounter++ }));
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+renderAll();
+</script>
+</body>
+</html>
