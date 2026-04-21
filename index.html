@@ -3,70 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PriorityOS — Issue Triage & Ranking System</title>
+  <title>PriorityOS — AI Issue Triage</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: { 50: '#f0f4ff', 100: '#dbe4ff', 500: '#4361ee', 600: '#3a0ca3', 700: '#2d0087' },
-            must:   '#ef4444',
-            should: '#f59e0b',
-            could:  '#3b82f6',
-            wont:   '#9ca3af',
-          }
-        }
-      }
-    }
-  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    .tab-active { border-bottom: 2px solid #4361ee; color: #4361ee; }
-    .card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 20px; }
-    .badge-must   { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
-    .badge-should { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-    .badge-could  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-    .badge-wont   { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
-    .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; }
-    .rice-high   { color: #16a34a; font-weight: 700; }
-    .rice-med    { color: #d97706; font-weight: 700; }
-    .rice-low    { color: #9ca3af; font-weight: 600; }
-    .source-tag  { font-size: 11px; background: #f3f4f6; color: #6b7280; padding: 2px 7px; border-radius: 4px; }
-    .tier-escalate { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
-    .tier-sprint   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-    .tier-future   { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
-    .tier-badge    { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; display: inline-block; }
-    .progress-bar  { height: 6px; border-radius: 3px; background: #e5e7eb; }
-    .progress-fill { height: 6px; border-radius: 3px; transition: width 0.6s ease; }
-    input, select, textarea { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 14px; width: 100%; outline: none; transition: border-color 0.2s; }
-    input:focus, select:focus, textarea:focus { border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.1); }
-    label { font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; display: block; }
-    .btn-primary   { background: #4361ee; color: white; padding: 9px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.2s; }
-    .btn-primary:hover { background: #3a0ca3; }
-    .btn-secondary { background: white; color: #374151; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 13px; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
-    .btn-secondary:hover { background: #f3f4f6; }
-    .btn-sm        { padding: 5px 12px; font-size: 12px; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .modal         { background: white; border-radius: 16px; width: 100%; max-width: 560px; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-    .step-dot      { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
-    .step-active   { background: #4361ee; color: white; }
-    .step-done     { background: #dcfce7; color: #16a34a; }
-    .step-inactive { background: #f3f4f6; color: #9ca3af; }
-    .animate-slide { animation: slideIn 0.3s ease; }
-    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .tooltip { position: relative; cursor: help; }
-    .tooltip:hover .tooltip-text { display: block; }
-    .tooltip-text { display: none; position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; white-space: nowrap; z-index: 10; }
-    .confidence-bar { display: flex; gap: 4px; }
-    .conf-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .metric-card { background: white; border-radius: 10px; border: 1px solid #e5e7eb; padding: 16px 20px; }
-    .empty-state { text-align: center; padding: 48px 20px; color: #9ca3af; }
-    .issue-row { border-bottom: 1px solid #f3f4f6; padding: 14px 0; transition: background 0.1s; }
-    .issue-row:last-child { border-bottom: none; }
-    .issue-row:hover { background: #fafafa; margin: 0 -8px; padding: 14px 8px; border-radius: 8px; }
-    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #f1f5f9; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    *{font-family:'Inter',sans-serif}
+    .tab-active{border-bottom:2px solid #4361ee;color:#4361ee}
+    .card{background:white;border-radius:12px;border:1px solid #e5e7eb;padding:20px}
+    .badge-must{background:#fef2f2;color:#ef4444;border:1px solid #fecaca}
+    .badge-should{background:#fffbeb;color:#d97706;border:1px solid #fde68a}
+    .badge-could{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+    .badge-wont{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}
+    .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em;display:inline-block}
+    .rice-high{color:#16a34a;font-weight:700}
+    .rice-med{color:#d97706;font-weight:700}
+    .rice-low{color:#9ca3af;font-weight:600}
+    .source-tag{font-size:11px;padding:2px 7px;border-radius:4px}
+    .tier-escalate{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+    .tier-sprint{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+    .tier-future{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}
+    .tier-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;display:inline-block}
+    .progress-bar{height:6px;border-radius:3px;background:#e5e7eb}
+    .progress-fill{height:6px;border-radius:3px;transition:width .6s ease}
+    input,select,textarea{border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;width:100%;outline:none;transition:border-color .2s}
+    input:focus,select:focus,textarea:focus{border-color:#4361ee;box-shadow:0 0 0 3px rgba(67,97,238,.1)}
+    label{font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;display:block}
+    .btn-primary{background:#4361ee;color:white;padding:9px 20px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:background .2s}
+    .btn-primary:hover{background:#3a0ca3}
+    .btn-primary:disabled{background:#a5b4fc;cursor:not-allowed}
+    .btn-secondary{background:white;color:#374151;padding:8px 16px;border-radius:8px;font-weight:500;font-size:13px;cursor:pointer;border:1px solid #d1d5db;transition:all .2s}
+    .btn-secondary:hover{background:#f3f4f6}
+    .btn-ai{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:5px 12px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;border:none;transition:opacity .2s;display:inline-flex;align-items:center;gap:4px}
+    .btn-ai:hover{opacity:.85}
+    .btn-ai:disabled{opacity:.5;cursor:not-allowed}
+    .btn-sm{padding:5px 12px;font-size:12px}
+    .btn-danger{background:white;color:#ef4444;border:1px solid #fca5a5;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer}
+    .btn-danger:hover{background:#fef2f2}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+    .modal{background:white;border-radius:16px;width:100%;max-width:580px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+    .step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .animate-slide{animation:slideIn .25s ease}
+    @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    .spinner-dark{border-color:rgba(67,97,238,.2);border-top-color:#4361ee}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .ai-pill{background:linear-gradient(135deg,#667eea15,#764ba215);border:1px solid #667eea30;border-radius:8px;padding:10px 14px}
+    .ai-badge{background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.05em}
+    .issue-row{border-bottom:1px solid #f3f4f6;padding:14px 0;transition:background .1s}
+    .issue-row:last-child{border-bottom:none}
+    .empty-state{text-align:center;padding:48px 20px;color:#9ca3af}
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+    .toast{position:fixed;bottom:24px;right:24px;background:#1f2937;color:white;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;animation:slideIn .2s ease;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+    .ai-reasoning{font-size:11px;color:#6b7280;background:#f9fafb;border-radius:6px;padding:6px 10px;margin-top:6px;border-left:3px solid #c4b5fd;font-style:italic}
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -75,311 +63,156 @@
 <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
   <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#4361ee,#764ba2)">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
       </div>
       <div>
-        <div class="font-700 text-gray-900 text-base font-bold leading-tight">PriorityOS</div>
-        <div class="text-xs text-gray-400 leading-tight">MoSCoW → RICE Issue Triage System</div>
+        <div class="font-bold text-gray-900 text-base leading-tight">PriorityOS</div>
+        <div class="text-xs text-gray-400 leading-tight flex items-center gap-1">
+          MoSCoW → RICE Triage
+          <span id="ai-status-pill" class="hidden ai-badge ml-1">AI ON</span>
+        </div>
       </div>
     </div>
-    <div class="flex items-center gap-4">
-      <div class="text-xs text-gray-400">Built for <span class="font-semibold text-gray-600">B2B SaaS Teams</span></div>
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-gray-400 hidden" id="ai-status-text"></span>
+      <button onclick="clearAll()" class="btn-secondary btn-sm text-red-500 border-red-200 hover:bg-red-50">Clear All</button>
+      <button onclick="seedData()" class="btn-secondary btn-sm">Load Sample Data</button>
       <button onclick="openAddIssue()" class="btn-primary btn-sm">+ Add Issue</button>
     </div>
   </div>
-  <!-- TABS -->
-  <div class="max-w-6xl mx-auto px-6 flex gap-0">
-    <button onclick="switchTab('intake')"   id="tab-intake"   class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all tab-active">Intake</button>
-    <button onclick="switchTab('moscow')"   id="tab-moscow"   class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">MoSCoW</button>
-    <button onclick="switchTab('rice')"     id="tab-rice"     class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">RICE Scoring</button>
-    <button onclick="switchTab('backlog')"  id="tab-backlog"  class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Backlog</button>
+  <div class="max-w-6xl mx-auto px-6 flex">
+    <button onclick="switchTab('intake')"    id="tab-intake"    class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all tab-active">Intake</button>
+    <button onclick="switchTab('moscow')"    id="tab-moscow"    class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">MoSCoW</button>
+    <button onclick="switchTab('rice')"      id="tab-rice"      class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">RICE Scoring</button>
+    <button onclick="switchTab('backlog')"   id="tab-backlog"   class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Backlog</button>
     <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Dashboard</button>
   </div>
 </header>
 
 <main class="max-w-6xl mx-auto px-6 py-8">
 
-<!-- ═══════════════════ TAB: INTAKE ═══════════════════ -->
+<!-- ══ TAB: INTAKE ══ -->
 <div id="view-intake" class="animate-slide">
   <div class="flex items-center justify-between mb-6">
     <div>
       <h2 class="text-xl font-bold text-gray-900">Issue Intake Queue</h2>
       <p class="text-sm text-gray-500 mt-1">All incoming issues from support, analytics, sales, and internal stakeholders.</p>
     </div>
-    <button onclick="loadSampleData()" class="btn-secondary btn-sm">Load Sample Data</button>
   </div>
-
-  <!-- Pipeline steps -->
-  <div class="card mb-6">
+  <div class="card mb-4">
     <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2">
-        <div class="step-dot step-active">1</div>
-        <span class="text-sm font-medium text-brand-500">Intake</span>
-      </div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-blue-600 text-white text-xs">1</div><span class="text-sm font-semibold text-blue-600">Intake</span></div>
       <div class="flex-1 h-px bg-gray-200"></div>
-      <div class="flex items-center gap-2">
-        <div class="step-dot step-inactive">2</div>
-        <span class="text-sm font-medium text-gray-400">MoSCoW Filter</span>
-      </div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-gray-100 text-gray-400 text-xs">2</div><span class="text-sm text-gray-400">MoSCoW Filter</span></div>
       <div class="flex-1 h-px bg-gray-200"></div>
-      <div class="flex items-center gap-2">
-        <div class="step-dot step-inactive">3</div>
-        <span class="text-sm font-medium text-gray-400">RICE Score</span>
-      </div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-gray-100 text-gray-400 text-xs">3</div><span class="text-sm text-gray-400">RICE Score</span></div>
       <div class="flex-1 h-px bg-gray-200"></div>
-      <div class="flex items-center gap-2">
-        <div class="step-dot step-inactive">4</div>
-        <span class="text-sm font-medium text-gray-400">Prioritized Backlog</span>
-      </div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-gray-100 text-gray-400 text-xs">4</div><span class="text-sm text-gray-400">Backlog</span></div>
     </div>
   </div>
-
-  <!-- Stats row -->
   <div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="metric-card">
-      <div class="text-2xl font-bold text-gray-900" id="stat-total">0</div>
-      <div class="text-xs text-gray-500 mt-1">Total Issues</div>
-    </div>
-    <div class="metric-card">
-      <div class="text-2xl font-bold text-amber-600" id="stat-unclassified">0</div>
-      <div class="text-xs text-gray-500 mt-1">Awaiting Triage</div>
-    </div>
-    <div class="metric-card">
-      <div class="text-2xl font-bold text-green-600" id="stat-forwarded">0</div>
-      <div class="text-xs text-gray-500 mt-1">Forwarded to RICE</div>
-    </div>
-    <div class="metric-card">
-      <div class="text-2xl font-bold text-gray-400" id="stat-eliminated">0</div>
-      <div class="text-xs text-gray-500 mt-1">Eliminated (Noise)</div>
-    </div>
+    <div class="card"><div class="text-2xl font-bold text-gray-900" id="stat-total">0</div><div class="text-xs text-gray-500 mt-1">Total Issues</div></div>
+    <div class="card"><div class="text-2xl font-bold text-amber-600" id="stat-unclassified">0</div><div class="text-xs text-gray-500 mt-1">Awaiting Triage</div></div>
+    <div class="card"><div class="text-2xl font-bold text-green-600" id="stat-forwarded">0</div><div class="text-xs text-gray-500 mt-1">Forwarded to RICE</div></div>
+    <div class="card"><div class="text-2xl font-bold text-gray-400" id="stat-eliminated">0</div><div class="text-xs text-gray-500 mt-1">Eliminated (Noise)</div></div>
   </div>
-
-  <div class="card">
-    <div id="intake-list">
-      <div class="empty-state" id="intake-empty">
-        <div class="text-4xl mb-3">📋</div>
-        <div class="font-medium text-gray-600 mb-1">No issues yet</div>
-        <div class="text-sm">Click "Add Issue" or "Load Sample Data" to get started</div>
-      </div>
-    </div>
-  </div>
+  <div class="card"><div id="intake-list"><div class="empty-state"><div class="text-4xl mb-3">📋</div><div class="font-medium text-gray-600 mb-1">No issues yet</div><div class="text-sm">Click "Add Issue" or "Load Sample Data" to get started</div></div></div></div>
 </div>
 
-<!-- ═══════════════════ TAB: MoSCoW ═══════════════════ -->
+<!-- ══ TAB: MoSCoW ══ -->
 <div id="view-moscow" class="animate-slide hidden">
   <div class="mb-6">
     <h2 class="text-xl font-bold text-gray-900">MoSCoW Classification</h2>
-    <p class="text-sm text-gray-500 mt-1">Stage 1: Classify each issue. Only MUST HAVE and top SHOULD HAVE advance to RICE scoring.</p>
+    <p class="text-sm text-gray-500 mt-1">Stage 1: Classify each issue. Only MUST HAVE and top SHOULD HAVE advance to RICE.</p>
   </div>
-
-  <!-- Legend -->
   <div class="grid grid-cols-4 gap-3 mb-6">
-    <div class="card border-l-4 border-l-red-400 py-3">
-      <div class="flex items-center gap-2 mb-1"><span class="badge badge-must">Must Have</span></div>
-      <div class="text-xs text-gray-500">Revenue-critical, SLA breach, core function broken</div>
-    </div>
-    <div class="card border-l-4 border-l-amber-400 py-3">
-      <div class="flex items-center gap-2 mb-1"><span class="badge badge-should">Should Have</span></div>
-      <div class="text-xs text-gray-500">Important, workaround exists, affects >10% users</div>
-    </div>
-    <div class="card border-l-4 border-l-blue-400 py-3">
-      <div class="flex items-center gap-2 mb-1"><span class="badge badge-could">Could Have</span></div>
-      <div class="text-xs text-gray-500">Nice to have, low urgency, <5% impact</div>
-    </div>
-    <div class="card border-l-4 border-l-gray-300 py-3">
-      <div class="flex items-center gap-2 mb-1"><span class="badge badge-wont">Won't Have</span></div>
-      <div class="text-xs text-gray-500">Noise, out of scope, duplicate, single low-value request</div>
-    </div>
+    <div class="card border-l-4 border-l-red-400 py-3"><span class="badge badge-must mb-1 block">Must Have</span><div class="text-xs text-gray-500">Revenue-critical, SLA breach, core function broken</div></div>
+    <div class="card border-l-4 border-l-amber-400 py-3"><span class="badge badge-should mb-1 block">Should Have</span><div class="text-xs text-gray-500">Important, workaround exists, affects >10% users</div></div>
+    <div class="card border-l-4 border-l-blue-400 py-3"><span class="badge badge-could mb-1 block">Could Have</span><div class="text-xs text-gray-500">Nice to have, low urgency, &lt;5% impact</div></div>
+    <div class="card border-l-4 border-l-gray-300 py-3"><span class="badge badge-wont mb-1 block">Won't Have</span><div class="text-xs text-gray-500">Noise, out of scope, duplicate, feature creep</div></div>
   </div>
-
-  <div class="card" id="moscow-list">
-    <div class="empty-state" id="moscow-empty">
-      <div class="text-4xl mb-3">🏷️</div>
-      <div class="font-medium text-gray-600 mb-1">No issues to classify</div>
-      <div class="text-sm">Add issues in the Intake tab first</div>
-    </div>
-  </div>
+  <div class="card" id="moscow-list"><div class="empty-state"><div class="text-4xl mb-3">🏷️</div><div class="font-medium text-gray-600 mb-1">No issues to classify</div><div class="text-sm">Add issues in the Intake tab first</div></div></div>
 </div>
 
-<!-- ═══════════════════ TAB: RICE ═══════════════════ -->
+<!-- ══ TAB: RICE ══ -->
 <div id="view-rice" class="animate-slide hidden">
   <div class="mb-6">
     <h2 class="text-xl font-bold text-gray-900">RICE Scoring</h2>
     <p class="text-sm text-gray-500 mt-1">Stage 2: Score forwarded issues. RICE = (Reach × Impact × Confidence) ÷ Effort</p>
   </div>
-
-  <!-- RICE legend -->
   <div class="grid grid-cols-4 gap-3 mb-6">
-    <div class="metric-card">
-      <div class="font-semibold text-sm text-gray-700 mb-1">Reach</div>
-      <div class="text-xs text-gray-500">% or # of accounts affected per sprint</div>
-      <div class="text-xs text-brand-500 mt-1 font-medium">1–10 scale</div>
-    </div>
-    <div class="metric-card">
-      <div class="font-semibold text-sm text-gray-700 mb-1">Impact</div>
-      <div class="text-xs text-gray-500">Effect on ROAS, conversion, retention</div>
-      <div class="text-xs text-brand-500 mt-1 font-medium">0.5 / 1 / 2 / 3</div>
-    </div>
-    <div class="metric-card">
-      <div class="font-semibold text-sm text-gray-700 mb-1">Confidence</div>
-      <div class="text-xs text-gray-500">Certainty in Reach + Impact estimates</div>
-      <div class="text-xs text-brand-500 mt-1 font-medium">20% / 50% / 80% / 100%</div>
-    </div>
-    <div class="metric-card">
-      <div class="font-semibold text-sm text-gray-700 mb-1">Effort</div>
-      <div class="text-xs text-gray-500">Eng + Design cost in person-weeks</div>
-      <div class="text-xs text-brand-500 mt-1 font-medium">0.5 / 1 / 2 / 4 / 8</div>
-    </div>
+    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Reach</div><div class="text-xs text-gray-500">Accounts affected per sprint</div><div class="text-xs text-blue-600 mt-1 font-medium">1–10 scale</div></div>
+    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Impact</div><div class="text-xs text-gray-500">Effect on ROAS, conversion, retention</div><div class="text-xs text-blue-600 mt-1 font-medium">0.5 / 1 / 2 / 3</div></div>
+    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Confidence</div><div class="text-xs text-gray-500">Certainty in estimates</div><div class="text-xs text-blue-600 mt-1 font-medium">20% / 50% / 80% / 100%</div></div>
+    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Effort</div><div class="text-xs text-gray-500">Eng + Design person-weeks</div><div class="text-xs text-blue-600 mt-1 font-medium">0.5 / 1 / 2 / 4 / 8</div></div>
   </div>
-
-  <div class="card" id="rice-list">
-    <div class="empty-state" id="rice-empty">
-      <div class="text-4xl mb-3">🎯</div>
-      <div class="font-medium text-gray-600 mb-1">No issues ready for scoring</div>
-      <div class="text-sm">Classify issues as MUST HAVE or SHOULD HAVE first</div>
-    </div>
-  </div>
+  <div class="card" id="rice-list"><div class="empty-state"><div class="text-4xl mb-3">🎯</div><div class="font-medium text-gray-600 mb-1">No issues ready for scoring</div><div class="text-sm">Classify issues as MUST or SHOULD HAVE first</div></div></div>
 </div>
 
-<!-- ═══════════════════ TAB: BACKLOG ═══════════════════ -->
+<!-- ══ TAB: BACKLOG ══ -->
 <div id="view-backlog" class="animate-slide hidden">
   <div class="flex items-center justify-between mb-6">
     <div>
       <h2 class="text-xl font-bold text-gray-900">Prioritized Backlog</h2>
-      <p class="text-sm text-gray-500 mt-1">Final ranked output. Sorted by RICE score descending.</p>
+      <p class="text-sm text-gray-500 mt-1">Final ranked output — sorted by RICE score descending.</p>
     </div>
     <div class="flex gap-2">
-      <button onclick="filterBacklog('all')"     id="filter-all"     class="btn-secondary btn-sm bg-gray-100">All</button>
+      <button onclick="filterBacklog('all')"      id="filter-all"      class="btn-secondary btn-sm bg-gray-100">All</button>
       <button onclick="filterBacklog('escalate')" id="filter-escalate" class="btn-secondary btn-sm">🚨 Escalation</button>
       <button onclick="filterBacklog('sprint')"   id="filter-sprint"   class="btn-secondary btn-sm">✅ Sprint</button>
       <button onclick="filterBacklog('future')"   id="filter-future"   class="btn-secondary btn-sm">🔮 Future</button>
     </div>
   </div>
-
-  <!-- Escalation alert -->
   <div id="escalation-alert" class="hidden mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-    <div class="text-red-500 text-lg">🚨</div>
-    <div>
-      <div class="font-semibold text-red-700 text-sm">Escalation Items Require Immediate Attention</div>
-      <div class="text-xs text-red-600 mt-1" id="escalation-count">0 issues scored ≥ 40 — assign owner within 24 hours</div>
-    </div>
+    <div class="text-lg">🚨</div>
+    <div><div class="font-semibold text-red-700 text-sm">Escalation Items Require Immediate Attention</div><div class="text-xs text-red-600 mt-1" id="escalation-count"></div></div>
   </div>
-
-  <div class="card" id="backlog-list">
-    <div class="empty-state" id="backlog-empty">
-      <div class="text-4xl mb-3">📊</div>
-      <div class="font-medium text-gray-600 mb-1">Backlog is empty</div>
-      <div class="text-sm">Score issues in the RICE tab to populate the backlog</div>
-    </div>
-  </div>
+  <div class="card" id="backlog-list"><div class="empty-state"><div class="text-4xl mb-3">📊</div><div class="font-medium text-gray-600 mb-1">Backlog is empty</div><div class="text-sm">Score issues in the RICE tab to populate the backlog</div></div></div>
 </div>
 
-<!-- ═══════════════════ TAB: DASHBOARD ═══════════════════ -->
+<!-- ══ TAB: DASHBOARD ══ -->
 <div id="view-dashboard" class="animate-slide hidden">
   <div class="mb-6">
     <h2 class="text-xl font-bold text-gray-900">PM Dashboard</h2>
     <p class="text-sm text-gray-500 mt-1">System health metrics and triage performance.</p>
   </div>
-
-  <!-- KPI row -->
   <div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="metric-card">
-      <div class="text-xs text-gray-500 mb-1">Noise Eliminated</div>
-      <div class="text-3xl font-bold text-green-600" id="kpi-noise">—</div>
-      <div class="text-xs text-gray-400 mt-1">Target: 50–80%</div>
-      <div class="progress-bar mt-2"><div class="progress-fill bg-green-400" id="kpi-noise-bar" style="width:0%"></div></div>
-    </div>
-    <div class="metric-card">
-      <div class="text-xs text-gray-500 mb-1">Issues in Escalation</div>
-      <div class="text-3xl font-bold text-red-600" id="kpi-escalation">0</div>
-      <div class="text-xs text-gray-400 mt-1">Target: &lt;5 active</div>
-    </div>
-    <div class="metric-card">
-      <div class="text-xs text-gray-500 mb-1">Sprint Backlog</div>
-      <div class="text-3xl font-bold text-brand-500" id="kpi-sprint">0</div>
-      <div class="text-xs text-gray-400 mt-1">RICE score 20–39</div>
-    </div>
-    <div class="metric-card">
-      <div class="text-xs text-gray-500 mb-1">Pipeline Completion</div>
-      <div class="text-3xl font-bold text-gray-700" id="kpi-completion">0%</div>
-      <div class="text-xs text-gray-400 mt-1">Issues fully scored</div>
-    </div>
+    <div class="card"><div class="text-xs text-gray-500 mb-1">Noise Eliminated</div><div class="text-3xl font-bold text-green-600" id="kpi-noise">—</div><div class="text-xs text-gray-400 mt-1">Target: 50–80%</div><div class="progress-bar mt-2"><div class="progress-fill bg-green-400" id="kpi-noise-bar" style="width:0%"></div></div></div>
+    <div class="card"><div class="text-xs text-gray-500 mb-1">Escalation Items</div><div class="text-3xl font-bold text-red-600" id="kpi-escalation">0</div><div class="text-xs text-gray-400 mt-1">Target: &lt;5 active</div></div>
+    <div class="card"><div class="text-xs text-gray-500 mb-1">Sprint Backlog</div><div class="text-3xl font-bold text-blue-600" id="kpi-sprint">0</div><div class="text-xs text-gray-400 mt-1">RICE score 20–39</div></div>
+    <div class="card"><div class="text-xs text-gray-500 mb-1">Pipeline Completion</div><div class="text-3xl font-bold text-gray-700" id="kpi-completion">0%</div><div class="text-xs text-gray-400 mt-1">Issues fully scored</div></div>
   </div>
-
-  <!-- Classification breakdown -->
   <div class="grid grid-cols-2 gap-6 mb-6">
-    <div class="card">
-      <div class="font-semibold text-sm text-gray-700 mb-4">MoSCoW Distribution</div>
-      <div class="space-y-3" id="moscow-breakdown">
-        <div class="text-sm text-gray-400">No data yet</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="font-semibold text-sm text-gray-700 mb-4">RICE Tier Distribution</div>
-      <div class="space-y-3" id="rice-breakdown">
-        <div class="text-sm text-gray-400">No data yet</div>
-      </div>
-    </div>
+    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-4">MoSCoW Distribution</div><div id="moscow-breakdown"><div class="text-sm text-gray-400">No data yet</div></div></div>
+    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-4">RICE Tier Distribution</div><div id="rice-breakdown"><div class="text-sm text-gray-400">No data yet</div></div></div>
   </div>
-
-  <!-- Source breakdown -->
-  <div class="card mb-6">
-    <div class="font-semibold text-sm text-gray-700 mb-4">Issue Source Mix</div>
-    <div class="grid grid-cols-4 gap-4" id="source-breakdown">
-      <div class="text-sm text-gray-400">No data yet</div>
-    </div>
-  </div>
-
-  <!-- System overview -->
+  <div class="card mb-6"><div class="font-semibold text-sm text-gray-700 mb-4">Issue Source Mix</div><div class="grid grid-cols-5 gap-4" id="source-breakdown"><div class="text-sm text-gray-400">No data yet</div></div></div>
   <div class="card">
-    <div class="font-semibold text-sm text-gray-700 mb-4">How This System Works</div>
+    <div class="font-semibold text-sm text-gray-700 mb-4">Pipeline Overview</div>
     <div class="grid grid-cols-4 gap-4">
-      <div class="text-center p-4 bg-gray-50 rounded-lg">
-        <div class="text-2xl mb-2">📥</div>
-        <div class="font-semibold text-xs text-gray-700 mb-1">Stage 1: Intake</div>
-        <div class="text-xs text-gray-500">Issues enter from support, analytics, sales, and internal stakeholders</div>
-      </div>
-      <div class="text-center p-4 bg-amber-50 rounded-lg">
-        <div class="text-2xl mb-2">🏷️</div>
-        <div class="font-semibold text-xs text-amber-700 mb-1">Stage 2: MoSCoW</div>
-        <div class="text-xs text-gray-500">Remove 50–80% noise. Only MUST + top SHOULD advance</div>
-      </div>
-      <div class="text-center p-4 bg-blue-50 rounded-lg">
-        <div class="text-2xl mb-2">🎯</div>
-        <div class="font-semibold text-xs text-blue-700 mb-1">Stage 3: RICE</div>
-        <div class="text-xs text-gray-500">Score filtered issues on Reach, Impact, Confidence, Effort</div>
-      </div>
-      <div class="text-center p-4 bg-green-50 rounded-lg">
-        <div class="text-2xl mb-2">📊</div>
-        <div class="font-semibold text-xs text-green-700 mb-1">Stage 4: Backlog</div>
-        <div class="text-xs text-gray-500">Ranked output: Escalation → Sprint → Future</div>
-      </div>
+      <div class="text-center p-4 bg-gray-50 rounded-lg"><div class="text-2xl mb-2">📥</div><div class="font-semibold text-xs text-gray-700 mb-1">Intake</div><div class="text-xs text-gray-500">Issues from support, analytics, sales, internal</div></div>
+      <div class="text-center p-4 bg-amber-50 rounded-lg"><div class="text-2xl mb-2">🏷️</div><div class="font-semibold text-xs text-amber-700 mb-1">MoSCoW Filter</div><div class="text-xs text-gray-500">Removes 50–80% noise. Only MUST + SHOULD advance</div></div>
+      <div class="text-center p-4 bg-blue-50 rounded-lg"><div class="text-2xl mb-2">🎯</div><div class="font-semibold text-xs text-blue-700 mb-1">RICE Score</div><div class="text-xs text-gray-500">Score on Reach, Impact, Confidence, Effort</div></div>
+      <div class="text-center p-4 bg-green-50 rounded-lg"><div class="text-2xl mb-2">📊</div><div class="font-semibold text-xs text-green-700 mb-1">Backlog</div><div class="text-xs text-gray-500">Ranked: Escalation → Sprint → Future</div></div>
     </div>
   </div>
 </div>
 
 </main>
 
-<!-- ═══════════════════ MODAL: ADD ISSUE ═══════════════════ -->
+<!-- ══ MODAL: ADD ISSUE ══ -->
 <div id="modal-add" class="modal-overlay hidden">
   <div class="modal">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-lg font-bold text-gray-900">Add New Issue</h3>
-      <button onclick="closeModal('modal-add')" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+      <button onclick="closeModal('modal-add')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
     </div>
     <div class="space-y-4">
-      <div>
-        <label>Issue Title *</label>
-        <input id="input-title" type="text" placeholder="e.g. ROAS dashboard returns 0 for all accounts" />
-      </div>
-      <div>
-        <label>Description</label>
-        <textarea id="input-desc" rows="2" placeholder="Brief context about the issue..."></textarea>
-      </div>
+      <div><label>Issue Title *</label><input id="input-title" type="text" placeholder="e.g. ROAS dashboard returns 0 for all accounts" /></div>
+      <div><label>Description</label><textarea id="input-desc" rows="2" placeholder="Brief context about the issue..."></textarea></div>
       <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label>Source</label>
+        <div><label>Source</label>
           <select id="input-source">
             <option value="support">Customer Support</option>
             <option value="analytics">Product Analytics</option>
@@ -388,80 +221,77 @@
             <option value="cs">Customer Success</option>
           </select>
         </div>
-        <div>
-          <label>Customer Tier</label>
+        <div><label>Customer Tier</label>
           <select id="input-tier">
             <option value="standard">Standard</option>
             <option value="vip">VIP / Enterprise</option>
           </select>
         </div>
       </div>
-      <div>
-        <label>AI Classification Hint</label>
-        <select id="input-hint">
-          <option value="">— Let me classify manually —</option>
-          <option value="must">Likely MUST HAVE (revenue/stability critical)</option>
-          <option value="should">Likely SHOULD HAVE (important, has workaround)</option>
-          <option value="could">Likely COULD HAVE (nice to have)</option>
-          <option value="wont">Likely WON'T HAVE (out of scope / noise)</option>
-        </select>
-      </div>
+    </div>
+    <div id="ai-classify-result" class="hidden mt-4 ai-pill">
+      <div class="flex items-center gap-2 mb-2"><span class="ai-badge">AI</span><span class="text-xs font-semibold text-purple-700">Classification Suggestion</span></div>
+      <div id="ai-moscow-result" class="text-sm text-gray-700 mb-1"></div>
+      <div id="ai-reasoning-result" class="ai-reasoning"></div>
+      <div class="text-xs text-gray-400 mt-2">This will be pre-filled — you can override in the MoSCoW tab.</div>
     </div>
     <div class="flex gap-3 mt-6 justify-end">
       <button onclick="closeModal('modal-add')" class="btn-secondary">Cancel</button>
+      <button id="btn-ai-classify" onclick="aiClassifyPreview()" class="btn-ai"><span id="ai-classify-spinner" class="spinner hidden"></span>✦ AI Classify</button>
       <button onclick="addIssue()" class="btn-primary">Add to Queue</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════ MODAL: RICE SCORING ═══════════════════ -->
+<!-- ══ MODAL: RICE SCORING ══ -->
 <div id="modal-rice" class="modal-overlay hidden">
-  <div class="modal" style="max-width: 600px;">
+  <div class="modal">
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-lg font-bold text-gray-900">RICE Score This Issue</h3>
-      <button onclick="closeModal('modal-rice')" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
+      <button onclick="closeModal('modal-rice')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
     </div>
-    <div id="rice-modal-title" class="text-sm text-gray-500 mb-5"></div>
+    <div id="rice-modal-title" class="text-sm text-gray-500 mb-1"></div>
+
+    <!-- AI suggest bar -->
+    <div id="ai-suggest-bar" class="hidden ai-pill mb-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2"><span class="ai-badge">AI</span><span class="text-xs font-semibold text-purple-700">Suggested RICE Inputs</span></div>
+        <button id="btn-ai-suggest" onclick="aiSuggestRice()" class="btn-ai btn-sm"><span id="ai-suggest-spinner" class="spinner hidden"></span>✦ AI Suggest</button>
+      </div>
+      <div id="ai-rice-reasoning" class="ai-reasoning mt-2 hidden"></div>
+    </div>
 
     <div class="space-y-5">
       <div>
-        <label class="flex items-center gap-2">
-          Reach
-          <span class="tooltip text-gray-400 text-xs">ℹ️<span class="tooltip-text">How many accounts affected per sprint?</span></span>
-        </label>
-        <div class="flex items-center gap-3">
-          <input type="range" id="rice-reach" min="1" max="10" value="5" oninput="updateRicePreview()" class="flex-1" style="width:auto; border:none; padding:0; box-shadow:none;" />
-          <span id="rice-reach-val" class="font-bold text-brand-500 w-6 text-center">5</span>
+        <label>Reach — accounts affected per sprint</label>
+        <div class="flex items-center gap-3 mt-1">
+          <input type="range" id="rice-reach" min="1" max="10" value="5" oninput="updateRicePreview()" class="flex-1" style="border:none;padding:0;box-shadow:none;width:auto"/>
+          <span id="rice-reach-val" class="font-bold text-blue-600 w-6 text-center">5</span>
         </div>
-        <div class="flex justify-between text-xs text-gray-400 mt-1">
-          <span>1 = &lt;5% accounts</span><span>5 = ~40%</span><span>10 = >80%</span>
-        </div>
+        <div class="flex justify-between text-xs text-gray-400 mt-1"><span>1 = &lt;5%</span><span>5 = ~40%</span><span>10 = &gt;80%</span></div>
       </div>
-
       <div>
-        <label>Impact on Core Metrics (ROAS, Conversion, Retention)</label>
+        <label>Impact on Core Metrics</label>
         <div class="grid grid-cols-4 gap-2 mt-1">
           <button onclick="setImpact(0.5)" id="imp-05" class="btn-secondary btn-sm text-center">0.5<div class="text-xs font-normal text-gray-400">Minimal</div></button>
           <button onclick="setImpact(1)"   id="imp-1"  class="btn-secondary btn-sm text-center">1.0<div class="text-xs font-normal text-gray-400">Moderate</div></button>
           <button onclick="setImpact(2)"   id="imp-2"  class="btn-secondary btn-sm text-center">2.0<div class="text-xs font-normal text-gray-400">Significant</div></button>
           <button onclick="setImpact(3)"   id="imp-3"  class="btn-secondary btn-sm text-center">3.0<div class="text-xs font-normal text-gray-400">Massive</div></button>
         </div>
-        <input type="hidden" id="rice-impact" value="1" />
+        <input type="hidden" id="rice-impact" value="1"/>
       </div>
-
       <div>
         <label>Confidence in Estimates</label>
         <div class="grid grid-cols-4 gap-2 mt-1">
           <button onclick="setConf(20)"  id="conf-20"  class="btn-secondary btn-sm text-center">20%<div class="text-xs font-normal text-gray-400">Guess</div></button>
-          <button onclick="setConf(50)"  id="conf-50"  class="btn-secondary btn-sm text-center">50%<div class="text-xs font-normal text-gray-400">Partial data</div></button>
-          <button onclick="setConf(80)"  id="conf-80"  class="btn-secondary btn-sm text-center">80%<div class="text-xs font-normal text-gray-400">Strong signal</div></button>
+          <button onclick="setConf(50)"  id="conf-50"  class="btn-secondary btn-sm text-center">50%<div class="text-xs font-normal text-gray-400">Partial</div></button>
+          <button onclick="setConf(80)"  id="conf-80"  class="btn-secondary btn-sm text-center">80%<div class="text-xs font-normal text-gray-400">Strong</div></button>
           <button onclick="setConf(100)" id="conf-100" class="btn-secondary btn-sm text-center">100%<div class="text-xs font-normal text-gray-400">Hard data</div></button>
         </div>
-        <input type="hidden" id="rice-confidence" value="80" />
+        <input type="hidden" id="rice-confidence" value="80"/>
       </div>
-
       <div>
-        <label>Effort (person-weeks, eng + design)</label>
+        <label>Effort (person-weeks)</label>
         <div class="grid grid-cols-5 gap-2 mt-1">
           <button onclick="setEffort(0.5)" id="eff-05" class="btn-secondary btn-sm text-center">0.5<div class="text-xs font-normal text-gray-400">&lt;1 day</div></button>
           <button onclick="setEffort(1)"   id="eff-1"  class="btn-secondary btn-sm text-center">1<div class="text-xs font-normal text-gray-400">~3 days</div></button>
@@ -469,33 +299,21 @@
           <button onclick="setEffort(4)"   id="eff-4"  class="btn-secondary btn-sm text-center">4<div class="text-xs font-normal text-gray-400">2–3 wks</div></button>
           <button onclick="setEffort(8)"   id="eff-8"  class="btn-secondary btn-sm text-center">8<div class="text-xs font-normal text-gray-400">Full sprint</div></button>
         </div>
-        <input type="hidden" id="rice-effort" value="2" />
+        <input type="hidden" id="rice-effort" value="2"/>
       </div>
-
-      <!-- VIP override -->
       <div class="flex items-center gap-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
-        <input type="checkbox" id="rice-vip" onchange="updateRicePreview()" class="w-4 h-4 accent-amber-500" />
-        <label for="rice-vip" class="text-sm text-amber-700 font-medium cursor-pointer">Apply 2× VIP multiplier (enterprise / high-ARR account)</label>
+        <input type="checkbox" id="rice-vip" onchange="updateRicePreview()" class="w-4 h-4 accent-amber-500"/>
+        <label for="rice-vip" class="text-sm text-amber-700 font-medium cursor-pointer mb-0">Apply 2× VIP multiplier (enterprise / high-ARR account)</label>
       </div>
     </div>
 
-    <!-- Live RICE preview -->
     <div class="mt-5 bg-gray-50 rounded-lg p-4 flex items-center justify-between">
-      <div>
-        <div class="text-xs text-gray-500 mb-1">RICE Score</div>
-        <div class="text-3xl font-bold" id="rice-preview-score">—</div>
-      </div>
-      <div>
-        <div class="text-xs text-gray-500 mb-1">Tier</div>
-        <div id="rice-preview-tier" class="text-sm font-semibold">—</div>
-      </div>
-      <div class="text-xs text-gray-400 text-right">
-        <div id="rice-preview-formula" class="font-mono">—</div>
-        <div class="mt-1">Reach × Impact × Conf ÷ Effort</div>
-      </div>
+      <div><div class="text-xs text-gray-500 mb-1">RICE Score</div><div class="text-3xl font-bold" id="rice-preview-score">—</div></div>
+      <div><div class="text-xs text-gray-500 mb-1">Tier</div><div id="rice-preview-tier" class="text-sm font-semibold">—</div></div>
+      <div class="text-xs text-gray-400 text-right"><div id="rice-preview-formula" class="font-mono text-xs">—</div><div class="mt-1">Reach × Impact × Conf ÷ Effort</div></div>
     </div>
 
-    <input type="hidden" id="rice-modal-id" />
+    <input type="hidden" id="rice-modal-id"/>
     <div class="flex gap-3 mt-5 justify-end">
       <button onclick="closeModal('modal-rice')" class="btn-secondary">Cancel</button>
       <button onclick="saveRiceScore()" class="btn-primary">Save Score</button>
@@ -504,22 +322,50 @@
 </div>
 
 <script>
-// ════════════════════════════════════════════
-// DATA STORE
-// ════════════════════════════════════════════
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const API = '';
 let issues = [];
-let idCounter = 1;
+let aiAvailable = false;
 let riceImpact = 1, riceConf = 80, riceEffort = 2;
 let backlogFilter = 'all';
+let pendingMoscow = null;
+let pendingRiceAI = null;
+let currentRiceIssue = null;
 
-const SOURCES = { support: 'Support', analytics: 'Analytics', sales: 'Sales', internal: 'Internal', cs: 'CS Escalation' };
-const SOURCE_COLORS = { support: 'bg-blue-100 text-blue-700', analytics: 'bg-purple-100 text-purple-700', sales: 'bg-green-100 text-green-700', internal: 'bg-gray-100 text-gray-600', cs: 'bg-red-100 text-red-700' };
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  const status = await api('GET', '/api/status');
+  aiAvailable = status.aiAvailable;
+  if (aiAvailable) {
+    document.getElementById('ai-status-pill').classList.remove('hidden');
+    document.getElementById('ai-status-text').textContent = 'Claude Haiku 4.5 active';
+    document.getElementById('ai-status-text').classList.remove('hidden');
+  }
+  await loadIssues();
+}
 
-function moscow(cls) {
-  if (cls === 'must') return '<span class="badge badge-must">Must Have</span>';
+// ─── API HELPERS ─────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  return res.json();
+}
+
+async function loadIssues() {
+  issues = await api('GET', '/api/issues');
+  renderAll();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const SOURCES = { support:'Support', analytics:'Analytics', sales:'Sales', internal:'Internal', cs:'CS Escalation' };
+const SRC_CLS = { support:'bg-blue-100 text-blue-700', analytics:'bg-purple-100 text-purple-700', sales:'bg-green-100 text-green-700', internal:'bg-gray-100 text-gray-600', cs:'bg-red-100 text-red-700' };
+
+function moscowBadge(cls) {
+  if (cls === 'must')   return '<span class="badge badge-must">Must Have</span>';
   if (cls === 'should') return '<span class="badge badge-should">Should Have</span>';
-  if (cls === 'could') return '<span class="badge badge-could">Could Have</span>';
-  if (cls === 'wont') return '<span class="badge badge-wont">Won\'t Have</span>';
+  if (cls === 'could')  return '<span class="badge badge-could">Could Have</span>';
+  if (cls === 'wont')   return '<span class="badge badge-wont">Won\'t Have</span>';
   return '<span class="badge" style="background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb">Unclassified</span>';
 }
 
@@ -531,7 +377,7 @@ function riceScore(issue) {
 }
 
 function riceTier(score) {
-  if (score === null) return null;
+  if (score === null || score === undefined) return null;
   if (score >= 40) return 'escalate';
   if (score >= 20) return 'sprint';
   return 'future';
@@ -550,114 +396,101 @@ function riceClass(score) {
   return 'rice-low';
 }
 
-function sourceTag(src) {
-  const cls = SOURCE_COLORS[src] || 'bg-gray-100 text-gray-600';
-  return `<span class="source-tag ${cls}">${SOURCES[src] || src}</span>`;
+function srcTag(s) {
+  const cls = SRC_CLS[s] || 'bg-gray-100 text-gray-600';
+  return `<span class="source-tag text-xs px-2 py-0.5 rounded ${cls}">${SOURCES[s]||s}</span>`;
 }
 
 function vipBadge(tier) {
-  return tier === 'vip' ? '<span class="badge" style="background:#fef9c3;color:#92400e;border:1px solid #fde68a;font-size:10px;">VIP</span>' : '';
+  return tier === 'vip' ? '<span class="badge text-xs" style="background:#fef9c3;color:#92400e;border:1px solid #fde68a">VIP</span>' : '';
 }
 
-// ════════════════════════════════════════════
-// TABS
-// ════════════════════════════════════════════
+function showToast(msg, type = 'default') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  if (type === 'ai') t.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
+  if (type === 'error') t.style.background = '#dc2626';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
 function switchTab(name) {
   ['intake','moscow','rice','backlog','dashboard'].forEach(t => {
-    document.getElementById('view-' + t).classList.add('hidden');
-    document.getElementById('tab-' + t).classList.remove('tab-active');
+    document.getElementById('view-'+t).classList.add('hidden');
+    document.getElementById('tab-'+t).classList.remove('tab-active');
   });
-  document.getElementById('view-' + name).classList.remove('hidden');
-  document.getElementById('tab-' + name).classList.add('tab-active');
+  document.getElementById('view-'+name).classList.remove('hidden');
+  document.getElementById('tab-'+name).classList.add('tab-active');
   renderAll();
 }
 
-// ════════════════════════════════════════════
-// RENDER
-// ════════════════════════════════════════════
+// ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderAll() {
-  renderIntake();
-  renderMoscow();
-  renderRice();
-  renderBacklog();
-  renderDashboard();
-  updateStats();
+  renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats();
 }
 
 function updateStats() {
-  const total = issues.length;
-  const unclassified = issues.filter(i => !i.moscow).length;
-  const forwarded = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
-  const eliminated = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
-  document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-unclassified').textContent = unclassified;
-  document.getElementById('stat-forwarded').textContent = forwarded;
-  document.getElementById('stat-eliminated').textContent = eliminated;
+  document.getElementById('stat-total').textContent = issues.length;
+  document.getElementById('stat-unclassified').textContent = issues.filter(i => !i.moscow).length;
+  document.getElementById('stat-forwarded').textContent = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
+  document.getElementById('stat-eliminated').textContent = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
 }
 
 function renderIntake() {
   const el = document.getElementById('intake-list');
-  const empty = document.getElementById('intake-empty');
-  if (!issues.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
-  empty.style.display = 'none';
+  if (!issues.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">📋</div><div class="font-medium text-gray-600 mb-1">No issues yet</div><div class="text-sm">Click "Add Issue" or "Load Sample Data" to get started</div></div>'; return; }
   el.innerHTML = issues.map(i => `
     <div class="issue-row">
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap mb-1">
             <span class="font-medium text-sm text-gray-900">${i.title}</span>
-            ${vipBadge(i.tier)}
-            ${sourceTag(i.source)}
-            ${i.hint ? `<span class="text-xs text-gray-400 italic">Suggested: ${i.hint}</span>` : ''}
+            ${vipBadge(i.tier)} ${srcTag(i.source)}
           </div>
           ${i.desc ? `<div class="text-xs text-gray-500 mt-1">${i.desc}</div>` : ''}
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          ${moscow(i.moscow)}
-          <button onclick="switchTab('moscow')" class="btn-secondary btn-sm">Classify →</button>
+          ${moscowBadge(i.moscow)}
+          <button onclick="deleteIssue(${i.id})" class="btn-danger btn-sm">✕</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function renderMoscow() {
   const el = document.getElementById('moscow-list');
-  const empty = document.getElementById('moscow-empty');
-  if (!issues.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
-  empty.style.display = 'none';
+  if (!issues.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">🏷️</div><div class="font-medium text-gray-600 mb-1">No issues to classify</div><div class="text-sm">Add issues in the Intake tab first</div></div>'; return; }
   el.innerHTML = issues.map(i => `
-    <div class="issue-row">
+    <div class="issue-row" id="moscow-row-${i.id}">
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap mb-1">
             <span class="font-medium text-sm text-gray-900">${i.title}</span>
-            ${vipBadge(i.tier)}
-            ${sourceTag(i.source)}
+            ${vipBadge(i.tier)} ${srcTag(i.source)}
           </div>
           ${i.desc ? `<div class="text-xs text-gray-500 mt-0.5">${i.desc}</div>` : ''}
-          ${i.hint ? `<div class="text-xs text-brand-500 mt-1">💡 Hint: ${i.hint}</div>` : ''}
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          ${moscow(i.moscow)}
+        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          ${moscowBadge(i.moscow)}
+          ${aiAvailable ? `<button onclick="aiClassifyIssue(${i.id})" id="ai-btn-${i.id}" class="btn-ai btn-sm">✦ AI</button>` : ''}
           <div class="flex gap-1">
-            <button onclick="classify(${i.id}, 'must')"   class="btn-secondary btn-sm ${i.moscow==='must'   ? 'bg-red-50 border-red-300 text-red-600' : ''}">M</button>
-            <button onclick="classify(${i.id}, 'should')" class="btn-secondary btn-sm ${i.moscow==='should' ? 'bg-amber-50 border-amber-300 text-amber-600' : ''}">S</button>
-            <button onclick="classify(${i.id}, 'could')"  class="btn-secondary btn-sm ${i.moscow==='could'  ? 'bg-blue-50 border-blue-300 text-blue-600' : ''}">C</button>
-            <button onclick="classify(${i.id}, 'wont')"   class="btn-secondary btn-sm ${i.moscow==='wont'   ? 'bg-gray-100 border-gray-300' : ''}">W</button>
+            <button onclick="classify(${i.id},'must')"   class="btn-secondary btn-sm ${i.moscow==='must'   ? 'bg-red-50 border-red-300 text-red-600' : ''}">M</button>
+            <button onclick="classify(${i.id},'should')" class="btn-secondary btn-sm ${i.moscow==='should' ? 'bg-amber-50 border-amber-300 text-amber-600' : ''}">S</button>
+            <button onclick="classify(${i.id},'could')"  class="btn-secondary btn-sm ${i.moscow==='could'  ? 'bg-blue-50 border-blue-300 text-blue-600' : ''}">C</button>
+            <button onclick="classify(${i.id},'wont')"   class="btn-secondary btn-sm ${i.moscow==='wont'   ? 'bg-gray-100' : ''}">W</button>
           </div>
         </div>
       </div>
-    </div>
-  `).join('');
+      <div id="ai-reasoning-${i.id}" class="hidden"></div>
+    </div>`).join('');
 }
 
 function renderRice() {
   const eligible = issues.filter(i => i.moscow === 'must' || i.moscow === 'should');
   const el = document.getElementById('rice-list');
-  const empty = document.getElementById('rice-empty');
-  if (!eligible.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
-  empty.style.display = 'none';
+  if (!eligible.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">🎯</div><div class="font-medium text-gray-600 mb-1">No issues ready for scoring</div><div class="text-sm">Classify issues as MUST or SHOULD HAVE first</div></div>'; return; }
   el.innerHTML = eligible.map(i => {
     const score = riceScore(i);
     return `
@@ -666,28 +499,17 @@ function renderRice() {
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap mb-1">
             <span class="font-medium text-sm text-gray-900">${i.title}</span>
-            ${vipBadge(i.tier)}
-            ${sourceTag(i.source)}
-            ${moscow(i.moscow)}
+            ${vipBadge(i.tier)} ${srcTag(i.source)} ${moscowBadge(i.moscow)}
           </div>
-          ${i.rice ? `
-            <div class="text-xs text-gray-500 mt-1 font-mono">
-              R:${i.rice.reach} × I:${i.rice.impact} × C:${i.rice.confidence}% ÷ E:${i.rice.effort}${i.rice.vip ? ' × 2 (VIP)' : ''}
-            </div>
-          ` : ''}
+          ${i.rice ? `<div class="text-xs text-gray-500 mt-1 font-mono">R:${i.rice.reach} × I:${i.rice.impact} × C:${i.rice.confidence}% ÷ E:${i.rice.effort}${i.rice.vip?' ×2(VIP)':''}</div>` : ''}
         </div>
         <div class="flex items-center gap-3 shrink-0">
-          ${score !== null ? `
-            <div class="text-right">
-              <div class="text-xl font-bold ${riceClass(score)}">${score.toFixed(1)}</div>
-              ${tierBadge(score)}
-            </div>
-          ` : '<span class="text-xs text-gray-400">Not scored</span>'}
+          ${score !== null ? `<div class="text-right"><div class="text-xl font-bold ${riceClass(score)}">${score.toFixed(1)}</div>${tierBadge(score)}</div>` : '<span class="text-xs text-gray-400">Not scored</span>'}
           <button onclick="openRiceModal(${i.id})" class="btn-primary btn-sm">${score !== null ? 'Rescore' : 'Score →'}</button>
         </div>
       </div>
-    </div>
-  `}).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderBacklog() {
@@ -696,50 +518,32 @@ function renderBacklog() {
     .map(i => ({ ...i, score: riceScore(i) }))
     .sort((a, b) => b.score - a.score);
 
-  const el = document.getElementById('backlog-list');
-  const empty = document.getElementById('backlog-empty');
-  const alert = document.getElementById('escalation-alert');
-  const countEl = document.getElementById('escalation-count');
-
   const escalations = scored.filter(i => i.score >= 40);
+  const alert = document.getElementById('escalation-alert');
   if (escalations.length) {
     alert.classList.remove('hidden');
-    countEl.textContent = `${escalations.length} issue${escalations.length > 1 ? 's' : ''} scored ≥ 40 — assign owner within 24 hours`;
+    document.getElementById('escalation-count').textContent = `${escalations.length} issue${escalations.length > 1 ? 's' : ''} scored ≥ 40 — assign owner within 24 hours`;
   } else { alert.classList.add('hidden'); }
 
-  document.getElementById('kpi-escalation').textContent = escalations.length;
-  document.getElementById('kpi-sprint').textContent = scored.filter(i => i.score >= 20 && i.score < 40).length;
-
   const filtered = backlogFilter === 'all' ? scored : scored.filter(i => riceTier(i.score) === backlogFilter);
-
-  if (!filtered.length) { empty.style.display = 'block'; el.innerHTML = ''; el.appendChild(empty); return; }
-  empty.style.display = 'none';
+  const el = document.getElementById('backlog-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">📊</div><div class="font-medium text-gray-600 mb-1">Backlog is empty</div><div class="text-sm">Score issues in the RICE tab to populate the backlog</div></div>'; return; }
 
   el.innerHTML = `
     <div class="grid grid-cols-12 gap-4 pb-2 mb-1 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-      <div class="col-span-1">#</div>
-      <div class="col-span-5">Issue</div>
-      <div class="col-span-2">Classification</div>
-      <div class="col-span-2 text-center">RICE Score</div>
-      <div class="col-span-2">Tier</div>
+      <div class="col-span-1">#</div><div class="col-span-5">Issue</div><div class="col-span-2">Class</div><div class="col-span-2 text-center">RICE</div><div class="col-span-2">Tier</div>
     </div>
     ${filtered.map((i, idx) => `
       <div class="issue-row grid grid-cols-12 gap-4 items-center">
-        <div class="col-span-1 text-sm font-bold text-gray-300">${idx + 1}</div>
+        <div class="col-span-1 text-sm font-bold text-gray-300">${idx+1}</div>
         <div class="col-span-5">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="font-medium text-sm text-gray-900">${i.title}</span>
-            ${vipBadge(i.tier)}
-            ${sourceTag(i.source)}
-          </div>
+          <div class="flex items-center gap-2 flex-wrap"><span class="font-medium text-sm text-gray-900">${i.title}</span>${vipBadge(i.tier)}${srcTag(i.source)}</div>
           ${i.desc ? `<div class="text-xs text-gray-400 mt-0.5">${i.desc}</div>` : ''}
         </div>
-        <div class="col-span-2">${moscow(i.moscow)}</div>
+        <div class="col-span-2">${moscowBadge(i.moscow)}</div>
         <div class="col-span-2 text-center text-xl font-bold ${riceClass(i.score)}">${i.score.toFixed(1)}</div>
         <div class="col-span-2">${tierBadge(i.score)}</div>
-      </div>
-    `).join('')}
-  `;
+      </div>`).join('')}`;
 }
 
 function renderDashboard() {
@@ -748,209 +552,235 @@ function renderDashboard() {
   const noise = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
   const forwarded = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
   const scored = issues.filter(i => i.rice).length;
+  const scoredIssues = issues.filter(i => i.rice).map(i => ({ ...i, score: riceScore(i) }));
 
-  const noisePct = classified ? Math.round(noise / classified * 100) : 0;
+  const noisePct = classified ? Math.round(noise/classified*100) : 0;
   document.getElementById('kpi-noise').textContent = noisePct + '%';
   document.getElementById('kpi-noise-bar').style.width = noisePct + '%';
+  document.getElementById('kpi-escalation').textContent = scoredIssues.filter(i => i.score >= 40).length;
+  document.getElementById('kpi-sprint').textContent = scoredIssues.filter(i => i.score >= 20 && i.score < 40).length;
+  document.getElementById('kpi-completion').textContent = (forwarded ? Math.round(scored/forwarded*100) : 0) + '%';
 
-  const completionPct = forwarded ? Math.round(scored / forwarded * 100) : 0;
-  document.getElementById('kpi-completion').textContent = completionPct + '%';
-
-  // MoSCoW breakdown
   const moscowEl = document.getElementById('moscow-breakdown');
-  const categories = [
-    { key: 'must',   label: 'Must Have',   cls: 'bg-red-400' },
-    { key: 'should', label: 'Should Have', cls: 'bg-amber-400' },
-    { key: 'could',  label: 'Could Have',  cls: 'bg-blue-400' },
-    { key: 'wont',   label: "Won't Have",  cls: 'bg-gray-300' },
-  ];
-  if (!total) { moscowEl.innerHTML = '<div class="text-sm text-gray-400">No data yet</div>'; }
-  else {
-    moscowEl.innerHTML = categories.map(c => {
-      const count = issues.filter(i => i.moscow === c.key).length;
-      const pct = classified ? Math.round(count / classified * 100) : 0;
-      return `
-        <div class="flex items-center gap-3">
-          <div class="text-xs text-gray-600 w-24">${c.label}</div>
-          <div class="flex-1 progress-bar"><div class="progress-fill ${c.cls}" style="width:${pct}%"></div></div>
-          <div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div>
-        </div>
-      `;
-    }).join('');
-  }
+  const cats = [{key:'must',label:'Must Have',cls:'bg-red-400'},{key:'should',label:'Should Have',cls:'bg-amber-400'},{key:'could',label:'Could Have',cls:'bg-blue-400'},{key:'wont',label:"Won't Have",cls:'bg-gray-300'}];
+  moscowEl.innerHTML = !classified ? '<div class="text-sm text-gray-400">No data yet</div>' : cats.map(c => {
+    const count = issues.filter(i => i.moscow === c.key).length;
+    const pct = classified ? Math.round(count/classified*100) : 0;
+    return `<div class="flex items-center gap-3 mb-2"><div class="text-xs text-gray-600 w-24">${c.label}</div><div class="flex-1 progress-bar"><div class="progress-fill ${c.cls}" style="width:${pct}%"></div></div><div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div></div>`;
+  }).join('');
 
-  // RICE tier breakdown
   const riceEl = document.getElementById('rice-breakdown');
-  const scoredIssues = issues.filter(i => i.rice).map(i => ({ ...i, score: riceScore(i) }));
-  if (!scoredIssues.length) { riceEl.innerHTML = '<div class="text-sm text-gray-400">No data yet</div>'; }
-  else {
-    const tiers = [
-      { key: 'escalate', label: '🚨 Escalation', cls: 'bg-red-400', min: 40 },
-      { key: 'sprint',   label: '✅ Sprint',      cls: 'bg-green-400', min: 20 },
-      { key: 'future',   label: '🔮 Future',      cls: 'bg-gray-300', min: 0 },
-    ];
-    riceEl.innerHTML = tiers.map(t => {
-      const count = scoredIssues.filter(i => riceTier(i.score) === t.key).length;
-      const pct = scoredIssues.length ? Math.round(count / scoredIssues.length * 100) : 0;
-      return `
-        <div class="flex items-center gap-3">
-          <div class="text-xs text-gray-600 w-24">${t.label}</div>
-          <div class="flex-1 progress-bar"><div class="progress-fill ${t.cls}" style="width:${pct}%"></div></div>
-          <div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div>
-        </div>
-      `;
-    }).join('');
-  }
+  const tiers = [{key:'escalate',label:'🚨 Escalation',cls:'bg-red-400'},{key:'sprint',label:'✅ Sprint',cls:'bg-green-400'},{key:'future',label:'🔮 Future',cls:'bg-gray-300'}];
+  riceEl.innerHTML = !scoredIssues.length ? '<div class="text-sm text-gray-400">No data yet</div>' : tiers.map(t => {
+    const count = scoredIssues.filter(i => riceTier(i.score) === t.key).length;
+    const pct = scoredIssues.length ? Math.round(count/scoredIssues.length*100) : 0;
+    return `<div class="flex items-center gap-3 mb-2"><div class="text-xs text-gray-600 w-24">${t.label}</div><div class="flex-1 progress-bar"><div class="progress-fill ${t.cls}" style="width:${pct}%"></div></div><div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div></div>`;
+  }).join('');
 
-  // Source breakdown
   const srcEl = document.getElementById('source-breakdown');
-  if (!total) { srcEl.innerHTML = '<div class="text-sm text-gray-400">No data yet</div>'; }
-  else {
-    const srcs = ['support','analytics','sales','internal','cs'];
-    srcEl.innerHTML = srcs.map(s => {
-      const count = issues.filter(i => i.source === s).length;
-      if (!count) return '';
-      return `
-        <div class="text-center p-3 bg-gray-50 rounded-lg">
-          <div class="text-xl font-bold text-gray-800">${count}</div>
-          <div class="text-xs text-gray-500 mt-1">${SOURCES[s]}</div>
-        </div>
-      `;
-    }).filter(Boolean).join('');
-  }
+  const srcs = ['support','analytics','sales','internal','cs'];
+  const srcItems = srcs.map(s => { const c = issues.filter(i => i.source === s).length; return c ? `<div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-bold text-gray-800">${c}</div><div class="text-xs text-gray-500 mt-1">${SOURCES[s]}</div></div>` : ''; }).filter(Boolean).join('');
+  srcEl.innerHTML = srcItems || '<div class="text-sm text-gray-400">No data yet</div>';
 }
 
-// ════════════════════════════════════════════
-// ACTIONS
-// ════════════════════════════════════════════
-function classify(id, cls) {
-  const issue = issues.find(i => i.id === id);
-  if (issue) { issue.moscow = cls; renderAll(); }
-}
-
-function openAddIssue() { document.getElementById('modal-add').classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-function addIssue() {
-  const title = document.getElementById('input-title').value.trim();
-  if (!title) { alert('Please enter an issue title.'); return; }
-  issues.push({
-    id: idCounter++,
-    title,
-    desc: document.getElementById('input-desc').value.trim(),
-    source: document.getElementById('input-source').value,
-    tier: document.getElementById('input-tier').value,
-    hint: document.getElementById('input-hint').value,
-    moscow: document.getElementById('input-hint').value || null,
-    rice: null,
-    createdAt: new Date()
-  });
+// ─── ACTIONS ──────────────────────────────────────────────────────────────────
+function openAddIssue() {
+  document.getElementById('ai-classify-result').classList.add('hidden');
   document.getElementById('input-title').value = '';
   document.getElementById('input-desc').value = '';
-  document.getElementById('input-hint').value = '';
-  closeModal('modal-add');
-  renderAll();
+  pendingMoscow = null;
+  document.getElementById('modal-add').classList.remove('hidden');
+  setTimeout(() => document.getElementById('input-title').focus(), 100);
 }
 
-function openRiceModal(id) {
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+async function aiClassifyPreview() {
+  const title = document.getElementById('input-title').value.trim();
+  if (!title) { showToast('Enter a title first', 'error'); return; }
+  const btn = document.getElementById('btn-ai-classify');
+  const spin = document.getElementById('ai-classify-spinner');
+  btn.disabled = true; spin.classList.remove('hidden');
+  try {
+    const data = await api('POST', '/api/classify', {
+      title, desc: document.getElementById('input-desc').value,
+      source: document.getElementById('input-source').value,
+      tier: document.getElementById('input-tier').value
+    });
+    if (data.error) { showToast('AI error: ' + data.error, 'error'); return; }
+    pendingMoscow = data.moscow;
+    pendingRiceAI = data.rice;
+    const labels = { must:'MUST HAVE', should:'SHOULD HAVE', could:'COULD HAVE', wont:"WON'T HAVE" };
+    document.getElementById('ai-moscow-result').innerHTML = `Suggested: <strong>${labels[data.moscow]}</strong>`;
+    document.getElementById('ai-reasoning-result').textContent = data.moscow_reasoning;
+    document.getElementById('ai-classify-result').classList.remove('hidden');
+    showToast('✦ AI classified as ' + labels[data.moscow], 'ai');
+  } catch(e) { showToast('Request failed', 'error'); }
+  finally { btn.disabled = false; spin.classList.add('hidden'); }
+}
+
+async function addIssue() {
+  const title = document.getElementById('input-title').value.trim();
+  if (!title) { showToast('Please enter an issue title', 'error'); return; }
+  const issue = await api('POST', '/api/issues', {
+    title, desc: document.getElementById('input-desc').value.trim(),
+    source: document.getElementById('input-source').value,
+    tier: document.getElementById('input-tier').value,
+    hint: pendingMoscow || ''
+  });
+  if (pendingRiceAI && (pendingMoscow === 'must' || pendingMoscow === 'should')) {
+    await api('PATCH', `/api/issues/${issue.id}`, { rice: { ...pendingRiceAI, vip: document.getElementById('input-tier').value === 'vip' } });
+  }
+  closeModal('modal-add');
+  await loadIssues();
+  showToast('Issue added to queue');
+}
+
+async function aiClassifyIssue(id) {
   const issue = issues.find(i => i.id === id);
+  const btn = document.getElementById('ai-btn-' + id);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span>'; }
+  try {
+    const data = await api('POST', '/api/classify', { title: issue.title, desc: issue.desc, source: issue.source, tier: issue.tier });
+    if (data.error) { showToast('AI error', 'error'); return; }
+    await api('PATCH', `/api/issues/${id}`, { moscow: data.moscow });
+    if (data.rice && (data.moscow === 'must' || data.moscow === 'should')) {
+      await api('PATCH', `/api/issues/${id}`, { rice: { ...data.rice, vip: issue.tier === 'vip' } });
+    }
+    await loadIssues();
+    const labels = { must:'MUST HAVE', should:'SHOULD HAVE', could:'COULD HAVE', wont:"WON'T HAVE" };
+    showToast(`✦ "${issue.title.slice(0,30)}..." → ${labels[data.moscow]}`, 'ai');
+    const reasoningEl = document.getElementById('ai-reasoning-' + id);
+    if (reasoningEl) {
+      reasoningEl.innerHTML = `<div class="ai-reasoning mt-2">✦ ${data.moscow_reasoning}</div>`;
+      reasoningEl.classList.remove('hidden');
+    }
+  } catch(e) { showToast('Request failed', 'error'); }
+}
+
+async function classify(id, cls) {
+  await api('PATCH', `/api/issues/${id}`, { moscow: cls });
+  await loadIssues();
+}
+
+async function deleteIssue(id) {
+  await api('DELETE', `/api/issues/${id}`);
+  await loadIssues();
+  showToast('Issue removed');
+}
+
+async function clearAll() {
+  if (!confirm('Clear all issues? This cannot be undone.')) return;
+  await api('DELETE', '/api/issues');
+  await loadIssues();
+  showToast('All issues cleared');
+}
+
+async function seedData() {
+  issues = await api('POST', '/api/seed');
+  renderAll();
+  showToast('Sample data loaded — 10 issues with pre-set scores');
+}
+
+function filterBacklog(f) {
+  backlogFilter = f;
+  ['all','escalate','sprint','future'].forEach(k => {
+    const el = document.getElementById('filter-'+k);
+    if (el) el.className = `btn-secondary btn-sm${k === f ? ' bg-gray-100' : ''}`;
+  });
+  renderBacklog();
+}
+
+// ─── RICE MODAL ───────────────────────────────────────────────────────────────
+function openRiceModal(id) {
+  currentRiceIssue = issues.find(i => i.id === id);
   document.getElementById('rice-modal-id').value = id;
-  document.getElementById('rice-modal-title').textContent = issue.title;
-  // Reset selections
-  riceImpact = issue.rice?.impact || 1;
-  riceConf   = issue.rice?.confidence || 80;
-  riceEffort = issue.rice?.effort || 2;
-  document.getElementById('rice-reach').value = issue.rice?.reach || 5;
-  document.getElementById('rice-vip').checked = issue.rice?.vip || false;
-  document.getElementById('rice-impact').value = riceImpact;
-  document.getElementById('rice-confidence').value = riceConf;
-  document.getElementById('rice-effort').value = riceEffort;
-  highlightButtons();
-  updateRicePreview();
+  document.getElementById('rice-modal-title').textContent = currentRiceIssue.title;
+  riceImpact = currentRiceIssue.rice?.impact || 1;
+  riceConf   = currentRiceIssue.rice?.confidence || 80;
+  riceEffort = currentRiceIssue.rice?.effort || 2;
+  document.getElementById('rice-reach').value = currentRiceIssue.rice?.reach || 5;
+  document.getElementById('rice-vip').checked = currentRiceIssue.rice?.vip || currentRiceIssue.tier === 'vip';
+
+  const suggestBar = document.getElementById('ai-suggest-bar');
+  if (aiAvailable) { suggestBar.classList.remove('hidden'); } else { suggestBar.classList.add('hidden'); }
+  document.getElementById('ai-rice-reasoning').classList.add('hidden');
+  highlightButtons(); updateRicePreview();
   document.getElementById('modal-rice').classList.remove('hidden');
 }
 
-function setImpact(v) { riceImpact = v; document.getElementById('rice-impact').value = v; highlightButtons(); updateRicePreview(); }
-function setConf(v)   { riceConf   = v; document.getElementById('rice-confidence').value = v; highlightButtons(); updateRicePreview(); }
-function setEffort(v) { riceEffort = v; document.getElementById('rice-effort').value = v; highlightButtons(); updateRicePreview(); }
+async function aiSuggestRice() {
+  if (!currentRiceIssue) return;
+  const btn = document.getElementById('btn-ai-suggest');
+  const spin = document.getElementById('ai-suggest-spinner');
+  btn.disabled = true; spin.classList.remove('hidden');
+  try {
+    const data = await api('POST', '/api/classify', {
+      title: currentRiceIssue.title, desc: currentRiceIssue.desc,
+      source: currentRiceIssue.source, tier: currentRiceIssue.tier
+    });
+    if (data.rice) {
+      riceImpact = data.rice.impact; riceConf = data.rice.confidence; riceEffort = data.rice.effort;
+      document.getElementById('rice-reach').value = data.rice.reach;
+      document.getElementById('rice-vip').checked = currentRiceIssue.tier === 'vip';
+      highlightButtons(); updateRicePreview();
+      const r = document.getElementById('ai-rice-reasoning');
+      r.textContent = '✦ ' + data.rice_reasoning;
+      r.classList.remove('hidden');
+      showToast('✦ AI suggested RICE inputs', 'ai');
+    }
+  } catch(e) { showToast('Request failed', 'error'); }
+  finally { btn.disabled = false; spin.classList.add('hidden'); }
+}
+
+function setImpact(v) { riceImpact = v; highlightButtons(); updateRicePreview(); }
+function setConf(v)   { riceConf   = v; highlightButtons(); updateRicePreview(); }
+function setEffort(v) { riceEffort = v; highlightButtons(); updateRicePreview(); }
 
 function highlightButtons() {
   [0.5,1,2,3].forEach(v => {
-    const el = document.getElementById('imp-' + String(v).replace('.',''));
-    if (el) el.className = `btn-secondary btn-sm text-center ${v === riceImpact ? 'bg-brand-100 border-brand-500 text-brand-500' : ''}`;
+    const el = document.getElementById('imp-'+String(v).replace('.',''));
+    if (el) el.className = `btn-secondary btn-sm text-center${v===riceImpact?' bg-blue-50 border-blue-400 text-blue-600':''}`;
   });
   [20,50,80,100].forEach(v => {
-    const el = document.getElementById('conf-' + v);
-    if (el) el.className = `btn-secondary btn-sm text-center ${v === riceConf ? 'bg-brand-100 border-brand-500 text-brand-500' : ''}`;
+    const el = document.getElementById('conf-'+v);
+    if (el) el.className = `btn-secondary btn-sm text-center${v===riceConf?' bg-blue-50 border-blue-400 text-blue-600':''}`;
   });
   [0.5,1,2,4,8].forEach(v => {
-    const el = document.getElementById('eff-' + String(v).replace('.',''));
-    if (el) el.className = `btn-secondary btn-sm text-center ${v === riceEffort ? 'bg-brand-100 border-brand-500 text-brand-500' : ''}`;
+    const el = document.getElementById('eff-'+String(v).replace('.',''));
+    if (el) el.className = `btn-secondary btn-sm text-center${v===riceEffort?' bg-blue-50 border-blue-400 text-blue-600':''}`;
   });
 }
 
 function updateRicePreview() {
   const reach = parseInt(document.getElementById('rice-reach').value);
   const vip   = document.getElementById('rice-vip').checked;
-  const effectiveReach = vip ? reach * 2 : reach;
+  const eff   = riceEffort;
   document.getElementById('rice-reach-val').textContent = reach;
-  const score = (effectiveReach * riceImpact * (riceConf / 100)) / riceEffort;
-  document.getElementById('rice-preview-score').textContent = score.toFixed(1);
-  document.getElementById('rice-preview-score').className = 'text-3xl font-bold ' + riceClass(score);
+  const effReach = vip ? reach*2 : reach;
+  const score = (effReach * riceImpact * (riceConf/100)) / eff;
+  const el = document.getElementById('rice-preview-score');
+  el.textContent = score.toFixed(1);
+  el.className = 'text-3xl font-bold ' + riceClass(score);
   const tier = riceTier(score);
-  const tierLabels = { escalate: '🚨 Escalation', sprint: '✅ Sprint', future: '🔮 Future' };
-  document.getElementById('rice-preview-tier').textContent = tier ? tierLabels[tier] : '—';
-  document.getElementById('rice-preview-formula').textContent = `${effectiveReach}${vip?'(VIP)':''} × ${riceImpact} × ${riceConf}% ÷ ${riceEffort}`;
+  const labels = { escalate:'🚨 Escalation', sprint:'✅ Sprint', future:'🔮 Future' };
+  document.getElementById('rice-preview-tier').textContent = tier ? labels[tier] : '—';
+  document.getElementById('rice-preview-formula').textContent = `${effReach}${vip?'(VIP)':''} × ${riceImpact} × ${riceConf}% ÷ ${eff}`;
 }
 
-function saveRiceScore() {
+async function saveRiceScore() {
   const id = parseInt(document.getElementById('rice-modal-id').value);
-  const issue = issues.find(i => i.id === id);
-  if (!issue) return;
-  issue.rice = {
-    reach: parseInt(document.getElementById('rice-reach').value),
-    impact: riceImpact,
-    confidence: riceConf,
-    effort: riceEffort,
-    vip: document.getElementById('rice-vip').checked
-  };
-  closeModal('modal-rice');
-  renderAll();
-}
-
-function filterBacklog(f) {
-  backlogFilter = f;
-  ['all','escalate','sprint','future'].forEach(k => {
-    const el = document.getElementById('filter-' + k);
-    if (el) el.className = `btn-secondary btn-sm ${k === f ? 'bg-gray-100' : ''}`;
+  const reach = parseInt(document.getElementById('rice-reach').value);
+  await api('PATCH', `/api/issues/${id}`, {
+    rice: { reach, impact: riceImpact, confidence: riceConf, effort: riceEffort, vip: document.getElementById('rice-vip').checked }
   });
-  renderBacklog();
+  closeModal('modal-rice');
+  await loadIssues();
+  showToast('RICE score saved');
 }
 
-// ════════════════════════════════════════════
-// SAMPLE DATA
-// ════════════════════════════════════════════
-function loadSampleData() {
-  const samples = [
-    { title: 'ROAS dashboard returns 0 for all enterprise accounts', desc: 'All enterprise clients reporting 0 ROAS since last deploy. Critical revenue metric.', source: 'support', tier: 'vip', moscow: 'must', rice: { reach: 10, impact: 3, confidence: 100, effort: 1, vip: false } },
-    { title: 'Attribution model produces inconsistent multi-touch results', desc: 'Last-click vs. linear attribution returning different counts on same data set.', source: 'analytics', tier: 'standard', moscow: 'must', rice: { reach: 7, impact: 3, confidence: 80, effort: 4, vip: false } },
-    { title: 'Ad spend sync delay >6 hours for Acme Corp (enterprise)', desc: 'Acme Corp ($40k MRR) reporting sync lag. SLA is 2 hours.', source: 'cs', tier: 'vip', moscow: 'must', rice: { reach: 2, impact: 3, confidence: 100, effort: 2, vip: true } },
-    { title: 'Bulk export CSV missing campaign_id and date columns', desc: 'Power users relying on export for downstream BI tools are affected.', source: 'support', tier: 'standard', moscow: 'should', rice: { reach: 4, impact: 1, confidence: 80, effort: 1, vip: false } },
-    { title: 'Filter presets do not persist across browser sessions', desc: 'Users have to reconfigure filters every login. High friction for daily users.', source: 'sales', tier: 'standard', moscow: 'should', rice: { reach: 7, impact: 1, confidence: 80, effort: 1, vip: false } },
-    { title: 'Onboarding step 3 has 62% drop-off rate in analytics', desc: 'Analytics alert flagged this week. Root cause unknown.', source: 'analytics', tier: 'standard', moscow: 'should', rice: { reach: 7, impact: 2, confidence: 50, effort: 2, vip: false } },
-    { title: 'Add dark mode to settings page', desc: 'Multiple users requested. No revenue impact identified.', source: 'support', tier: 'standard', moscow: 'could', rice: null },
-    { title: 'Support TikTok Ads as a data source', desc: 'One prospect asked about this during sales call.', source: 'sales', tier: 'standard', moscow: 'wont', rice: null },
-    { title: 'Page header color is slightly off-brand on mobile', desc: 'Minor visual regression noticed internally.', source: 'internal', tier: 'standard', moscow: 'wont', rice: null },
-    { title: 'Add tooltip explanations to ROAS metric cards', desc: 'Requested by new customers unfamiliar with attribution.', source: 'support', tier: 'standard', moscow: 'could', rice: null },
-  ];
-  issues = samples.map((s, i) => ({ ...s, id: idCounter++ }));
-  renderAll();
-}
-
-// ════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════
-renderAll();
+// ─── START ────────────────────────────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
