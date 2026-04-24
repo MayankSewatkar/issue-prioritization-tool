@@ -31,6 +31,30 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS themes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL,
+    description TEXT    DEFAULT '',
+    issue_ids   TEXT    DEFAULT '[]',
+    rank        INTEGER DEFAULT 0,
+    budget      INTEGER DEFAULT 0,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS solutions (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    theme_id     INTEGER,
+    title        TEXT    NOT NULL,
+    description  TEXT    DEFAULT '',
+    value_score  REAL    DEFAULT 5,
+    effort_score REAL    DEFAULT 5,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // ─── ANTHROPIC CLIENT ────────────────────────────────────────────────────────
 const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
 const anthropic = hasApiKey ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
@@ -51,6 +75,30 @@ RICE definitions (for B2B SaaS with ~100 active accounts):
 - confidence: 20=guess, 50=partial data, 80=strong signal, 100=hard data
 - effort: 0.5=<1 day, 1=2-3 days, 2=1 week, 4=2-3 weeks, 8=full sprint
 
+Always respond with valid JSON only. No markdown, no explanation outside the JSON.`;
+
+const THEMES_SYSTEM = `You are a Senior Product Manager for a B2B SaaS company (AI Marketing & Sales Intelligence for retail/ecommerce).
+Cluster product issues into 5–10 strategic themes. Each theme is a core problem area that, if fully solved, eliminates multiple issues.
+
+Rules:
+- name: 2–4 words (e.g. "Attribution Accuracy", "Onboarding Optimization", "API Reliability")
+- description: one sentence — what core problem does this theme address?
+- issue_ids: array of issue IDs that belong to this theme (every issue must belong to exactly one theme)
+- rank: 1 = highest business impact
+- budget: integer 0–100. Imagine spending $100 across all themes — allocate by expected ROI. All budgets must sum to exactly 100.
+
+Always respond with valid JSON only. No markdown, no explanation outside the JSON.`;
+
+const SOLUTIONS_SYSTEM = `You are a Senior Product Manager for a B2B SaaS company (AI Marketing & Sales Intelligence for retail/ecommerce).
+Given a strategic theme and its issues, generate 5–8 distinct solution approaches.
+
+For each solution:
+- title: 4–8 words, action-oriented (e.g. "Rebuild attribution pipeline with event replay")
+- description: 1–2 sentences — what specifically would be built or changed?
+- value_score: 1–10 (10 = massive revenue/retention impact; 1 = negligible)
+- effort_score: 1–10 (10 = many months of eng; 1 = hours)
+
+Solutions should represent meaningfully different approaches — not variations of the same idea.
 Always respond with valid JSON only. No markdown, no explanation outside the JSON.`;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -222,6 +270,131 @@ app.post('/api/seed', (req, res) => {
 // GET /api/status
 app.get('/api/status', (req, res) => {
   res.json({ ok: true, aiAvailable: hasApiKey });
+});
+
+// ─── THEMES ──────────────────────────────────────────────────────────────────
+
+function toTheme(row) {
+  if (!row) return null;
+  return { id: row.id, name: row.name, description: row.description,
+    issueIds: JSON.parse(row.issue_ids || '[]'), rank: row.rank, budget: row.budget, createdAt: row.created_at };
+}
+
+app.get('/api/themes', (req, res) => {
+  res.json(db.prepare('SELECT * FROM themes ORDER BY rank ASC').all().map(toTheme));
+});
+
+app.delete('/api/themes', (req, res) => {
+  db.prepare('DELETE FROM solutions').run();
+  db.prepare('DELETE FROM themes').run();
+  res.json({ ok: true });
+});
+
+app.patch('/api/themes/:id', (req, res) => {
+  const { id } = req.params;
+  const { budget, rank } = req.body;
+  if (budget !== undefined) db.prepare('UPDATE themes SET budget = ? WHERE id = ?').run(budget, id);
+  if (rank   !== undefined) db.prepare('UPDATE themes SET rank = ? WHERE id = ?').run(rank, id);
+  res.json(toTheme(db.prepare('SELECT * FROM themes WHERE id = ?').get(id)));
+});
+
+app.post('/api/themes/generate', async (req, res) => {
+  if (!anthropic) return res.status(503).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  const issues = db.prepare('SELECT * FROM issues WHERE moscow IS NOT NULL').all();
+  if (issues.length < 3) return res.status(400).json({ error: 'Need at least 3 classified issues first' });
+
+  const list = issues.map(i =>
+    `ID:${i.id} | [${i.moscow?.toUpperCase()}] ${i.title}${i.desc ? ' — ' + i.desc.slice(0, 120) : ''}`
+  ).join('\n');
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1800,
+      system: [{ type: 'text', text: THEMES_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: `Cluster these ${issues.length} issues into 5–10 strategic themes:\n\n${list}\n\nRespond with:\n{"themes":[{"name":"...","description":"...","issue_ids":[1,2],"rank":1,"budget":25}]}` }]
+    });
+    let text = response.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(text);
+
+    db.prepare('DELETE FROM solutions').run();
+    db.prepare('DELETE FROM themes').run();
+    const ins = db.prepare('INSERT INTO themes (name, description, issue_ids, rank, budget) VALUES (?, ?, ?, ?, ?)');
+    db.transaction(items => items.forEach(t =>
+      ins.run(t.name, t.description || '', JSON.stringify(t.issue_ids || []), t.rank || 0, t.budget || 0)
+    ))(parsed.themes);
+
+    res.json(db.prepare('SELECT * FROM themes ORDER BY rank ASC').all().map(toTheme));
+  } catch (err) {
+    console.error('Themes error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SOLUTIONS ────────────────────────────────────────────────────────────────
+
+function toSolution(row) {
+  if (!row) return null;
+  return { id: row.id, themeId: row.theme_id, title: row.title, description: row.description,
+    valueScore: row.value_score, effortScore: row.effort_score, createdAt: row.created_at };
+}
+
+app.get('/api/solutions', (req, res) => {
+  const { theme_id } = req.query;
+  const rows = theme_id
+    ? db.prepare('SELECT * FROM solutions WHERE theme_id = ? ORDER BY value_score DESC').all(theme_id)
+    : db.prepare('SELECT * FROM solutions ORDER BY theme_id, value_score DESC').all();
+  res.json(rows.map(toSolution));
+});
+
+app.patch('/api/solutions/:id', (req, res) => {
+  const { id } = req.params;
+  const { value_score, effort_score } = req.body;
+  if (value_score  !== undefined) db.prepare('UPDATE solutions SET value_score = ? WHERE id = ?').run(value_score, id);
+  if (effort_score !== undefined) db.prepare('UPDATE solutions SET effort_score = ? WHERE id = ?').run(effort_score, id);
+  res.json(toSolution(db.prepare('SELECT * FROM solutions WHERE id = ?').get(id)));
+});
+
+app.delete('/api/solutions/:id', (req, res) => {
+  db.prepare('DELETE FROM solutions WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.post('/api/solutions/generate', async (req, res) => {
+  if (!anthropic) return res.status(503).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  const { theme_id } = req.body;
+  if (!theme_id) return res.status(400).json({ error: 'theme_id required' });
+
+  const theme = db.prepare('SELECT * FROM themes WHERE id = ?').get(theme_id);
+  if (!theme) return res.status(404).json({ error: 'Theme not found' });
+
+  const ids = JSON.parse(theme.issue_ids || '[]');
+  const issues = ids.length
+    ? db.prepare(`SELECT * FROM issues WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids)
+    : [];
+  const issueList = issues.map(i => `- ${i.title}${i.desc ? ': ' + i.desc.slice(0, 120) : ''}`).join('\n') || '(no linked issues)';
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1400,
+      system: [{ type: 'text', text: SOLUTIONS_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: `Theme: "${theme.name}"\nCore problem: ${theme.description}\n\nRelated issues:\n${issueList}\n\nRespond with:\n{"solutions":[{"title":"...","description":"...","value_score":8,"effort_score":3}]}` }]
+    });
+    let text = response.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(text);
+
+    db.prepare('DELETE FROM solutions WHERE theme_id = ?').run(theme_id);
+    const ins = db.prepare('INSERT INTO solutions (theme_id, title, description, value_score, effort_score) VALUES (?, ?, ?, ?, ?)');
+    db.transaction(items => items.forEach(s =>
+      ins.run(theme_id, s.title, s.description || '', s.value_score ?? 5, s.effort_score ?? 5)
+    ))(parsed.solutions);
+
+    res.json(db.prepare('SELECT * FROM solutions WHERE theme_id = ? ORDER BY value_score DESC').all(theme_id).map(toSolution));
+  } catch (err) {
+    console.error('Solutions error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Catch-all → serve index.html

@@ -190,6 +190,35 @@
     .pipeline-step { border-radius: 12px; padding: 18px; text-align: center; }
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(28,20,16,.05); }
     .mono { font-family: 'DM Mono', monospace; }
+
+    /* ── THEME CARDS ── */
+    .theme-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: box-shadow .15s; }
+    .theme-card:hover { box-shadow: 0 4px 16px rgba(28,20,16,.09); }
+    .budget-seg { height: 100%; transition: width .5s ease; display: inline-block; }
+
+    /* ── MATRIX DOTS ── */
+    .sol-dot {
+      position: absolute; width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: white; cursor: pointer;
+      transform: translate(-50%, -50%); transition: transform .15s;
+      box-shadow: 0 2px 8px rgba(28,20,16,.18); pointer-events: all;
+      z-index: 10;
+    }
+    .sol-dot:hover { transform: translate(-50%, -50%) scale(1.18); z-index: 20; }
+    .sol-dot-tooltip {
+      position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      background: var(--text); color: var(--surface); font-size: 11px; font-weight: 500;
+      padding: 5px 10px; border-radius: 7px; white-space: nowrap; pointer-events: none;
+      box-shadow: 0 4px 12px rgba(28,20,16,.2); opacity: 0; transition: opacity .15s; z-index: 30;
+    }
+    .sol-dot:hover .sol-dot-tooltip { opacity: 1; }
+
+    /* ── SOLUTION LIST CARDS ── */
+    .sol-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface); margin-bottom: 8px; }
+    .sol-card:last-child { margin-bottom: 0; }
+    .quadrant-section { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--surface); }
+    .quadrant-section:empty { display: none; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -221,6 +250,8 @@
         <button onclick="switchTab('moscow')"    id="tab-moscow"    class="nav-tab">MoSCoW</button>
         <button onclick="switchTab('rice')"      id="tab-rice"      class="nav-tab">RICE Scoring</button>
         <button onclick="switchTab('backlog')"   id="tab-backlog"   class="nav-tab">Backlog</button>
+        <button onclick="switchTab('themes')"    id="tab-themes"    class="nav-tab">Themes</button>
+        <button onclick="switchTab('strategy')"  id="tab-strategy"  class="nav-tab">Strategy</button>
         <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab">Dashboard</button>
       </nav>
 
@@ -362,6 +393,115 @@
       <div class="font-semibold text-slate-600 mb-1">Backlog is empty</div>
       <div class="text-sm">Score issues in the RICE tab to populate the backlog</div>
     </div>
+  </div>
+</div>
+
+<!-- ══ THEMES ══ -->
+<div id="view-themes" class="animate-slide hidden">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:var(--text)">Problem Themes</h1>
+      <p class="text-sm mt-1" style="color:var(--text-2)">AI clusters your issues into strategic buckets, ranks them by impact, and runs a $100 investment test.</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <button onclick="clearThemes()" class="btn-ghost text-xs" style="color:#C05046">Clear</button>
+      <button id="btn-gen-themes" onclick="generateThemes()" class="btn-ai">
+        <span id="spin-themes" class="spinner hidden"></span>✦ Generate Themes
+      </button>
+    </div>
+  </div>
+
+  <!-- Budget summary bar -->
+  <div id="budget-summary" class="hidden card mb-5" style="padding:16px 24px">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-semibold uppercase tracking-wide" style="color:var(--text-3)">$100 Budget Allocation</span>
+      <span id="budget-total" class="text-xs font-bold" style="color:var(--primary)">$0 / $100 allocated</span>
+    </div>
+    <div class="flex gap-1 h-3 rounded-full overflow-hidden" id="budget-bar-segments" style="background:var(--border)"></div>
+    <div class="flex flex-wrap gap-3 mt-3" id="budget-legend"></div>
+  </div>
+
+  <div id="themes-list">
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="#94A3B8" stroke-width="2"/><path d="M16 24h16M24 16v16" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="font-semibold mb-1" style="color:var(--text-2)">No themes yet</div>
+      <div class="text-sm" style="color:var(--text-3)">Classify at least 3 issues, then click "Generate Themes"</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STRATEGY ══ -->
+<div id="view-strategy" class="animate-slide hidden">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:var(--text)">Solution Strategy</h1>
+      <p class="text-sm mt-1" style="color:var(--text-2)">Plot solutions on the Value × Effort matrix. Target the top-left quadrant first.</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <select id="strategy-theme-select" onchange="onThemeSelect()" class="text-sm" style="width:auto;padding:7px 12px">
+        <option value="">— Select a theme —</option>
+      </select>
+      <button id="btn-gen-solutions" onclick="generateSolutions()" class="btn-ai" disabled>
+        <span id="spin-solutions" class="spinner hidden"></span>✦ Generate Solutions
+      </button>
+    </div>
+  </div>
+
+  <!-- 4-Quadrant Matrix -->
+  <div id="strategy-content" class="hidden">
+    <div class="card mb-5" style="padding:20px">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-semibold" style="color:var(--text)">Value × Effort Matrix</div>
+        <div class="flex gap-4 text-xs" style="color:var(--text-3)">
+          <span>◀ Low Effort · High Effort ▶</span>
+          <span>▲ High Value · Low Value ▼</span>
+        </div>
+      </div>
+
+      <!-- Matrix grid -->
+      <div style="position:relative;width:100%;padding-bottom:52%;margin-bottom:8px">
+        <div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px">
+          <!-- Q1: High Value, Low Effort → DO FIRST -->
+          <div id="q1" style="background:#EEFAF3;border:1px solid #AEEAC8;border-radius:10px;padding:12px;position:relative">
+            <div class="text-xs font-bold mb-0.5" style="color:#1A7A48">DO FIRST</div>
+            <div class="text-xs" style="color:#3BAA6A">High Value · Low Effort</div>
+            <div class="text-xs mt-1" style="color:var(--text-3)">~80% of your impact lives here</div>
+          </div>
+          <!-- Q2: High Value, High Effort → PLAN -->
+          <div id="q2" style="background:var(--primary-light);border:1px solid var(--primary-border);border-radius:10px;padding:12px;position:relative">
+            <div class="text-xs font-bold mb-0.5" style="color:var(--primary)">PLAN FOR QUARTER</div>
+            <div class="text-xs" style="color:#D4845A">High Value · High Effort</div>
+            <div class="text-xs mt-1" style="color:var(--text-3)">Worth investing — schedule it</div>
+          </div>
+          <!-- Q3: Low Value, Low Effort → SLACK -->
+          <div id="q3" style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px;position:relative">
+            <div class="text-xs font-bold mb-0.5" style="color:var(--text-2)">DO IN SLACK</div>
+            <div class="text-xs" style="color:var(--text-3)">Low Value · Low Effort</div>
+            <div class="text-xs mt-1" style="color:var(--text-3)">Filler work between sprints</div>
+          </div>
+          <!-- Q4: Low Value, High Effort → DROP -->
+          <div id="q4" style="background:#FEF0EE;border:1px solid #F5C0B8;border-radius:10px;padding:12px;position:relative">
+            <div class="text-xs font-bold mb-0.5" style="color:#B83222">DROP</div>
+            <div class="text-xs" style="color:#D45040">Low Value · High Effort</div>
+            <div class="text-xs mt-1" style="color:var(--text-3)">Cost outweighs benefit — skip</div>
+          </div>
+        </div>
+        <!-- Solution dots layer -->
+        <div id="matrix-dots" style="position:absolute;inset:0;pointer-events:none"></div>
+      </div>
+      <div class="flex justify-between text-xs" style="color:var(--text-3)">
+        <span>◀ Low Effort</span><span style="color:var(--text-2);font-weight:600">EFFORT AXIS</span><span>High Effort ▶</span>
+      </div>
+    </div>
+
+    <!-- Solutions by quadrant -->
+    <div class="grid grid-cols-2 gap-4" id="solutions-by-quadrant"></div>
+  </div>
+
+  <div id="strategy-empty" class="empty-state">
+    <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="36" height="36" rx="4" stroke="#94A3B8" stroke-width="2"/><path d="M6 24h36M24 6v36" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
+    <div class="font-semibold mb-1" style="color:var(--text-2)">No theme selected</div>
+    <div class="text-sm" style="color:var(--text-3)">Generate themes first, then select one to build its solution matrix</div>
   </div>
 </div>
 
@@ -612,6 +752,9 @@
 <script>
 const API = '';
 let issues = [];
+let themes = [];
+let solutions = [];
+let selectedThemeId = null;
 let aiAvailable = false;
 let riceImpact = 1, riceConf = 80, riceEffort = 2;
 let backlogFilter = 'all';
@@ -628,6 +771,7 @@ async function init() {
     document.getElementById('ai-status-text').classList.remove('hidden');
   }
   await loadIssues();
+  await loadThemes();
 }
 
 async function api(method, path, body) {
@@ -706,7 +850,7 @@ function showToast(msg, type = 'default') {
 }
 
 function switchTab(name) {
-  ['intake','moscow','rice','backlog','dashboard'].forEach(t => {
+  ['intake','moscow','rice','backlog','themes','strategy','dashboard'].forEach(t => {
     document.getElementById('view-'+t).classList.add('hidden');
     document.getElementById('tab-'+t).classList.remove('tab-active');
   });
@@ -717,6 +861,7 @@ function switchTab(name) {
 
 function renderAll() {
   renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats();
+  renderThemes(); renderStrategyThemeSelect();
 }
 
 function updateStats() {
@@ -1088,6 +1233,180 @@ async function saveRiceScore() {
   closeModal('modal-rice');
   await loadIssues();
   showToast('RICE score saved');
+}
+
+// ─── THEMES ──────────────────────────────────────────────────────────────────
+
+const THEME_COLORS = ['#CC6B48','#7C3AED','#1A7A48','#2D55B8','#92600A','#B83222','#1E6E8C','#5A3E8C','#3A7A5C','#8C5A1E'];
+
+async function generateThemes() {
+  const btn = document.getElementById('btn-gen-themes');
+  const spin = document.getElementById('spin-themes');
+  btn.disabled = true; spin.classList.remove('hidden');
+  try {
+    const data = await api('POST', '/api/themes/generate');
+    if (data.error) { showToast(data.error, 'error'); return; }
+    themes = data;
+    renderThemes(); renderStrategyThemeSelect();
+    showToast(`✦ ${themes.length} themes generated`, 'ai');
+  } catch(e) { showToast('Request failed', 'error'); }
+  finally { btn.disabled = false; spin.classList.add('hidden'); }
+}
+
+async function clearThemes() {
+  await api('DELETE', '/api/themes');
+  themes = []; solutions = []; selectedThemeId = null;
+  renderThemes(); renderStrategyThemeSelect(); renderMatrix();
+}
+
+async function loadThemes() {
+  themes = await api('GET', '/api/themes');
+  renderThemes(); renderStrategyThemeSelect();
+}
+
+function renderThemes() {
+  const el = document.getElementById('themes-list');
+  if (!themes.length) {
+    document.getElementById('budget-summary').classList.add('hidden');
+    el.innerHTML = `<div class="empty-state"><svg class="empty-icon" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="#94A3B8" stroke-width="2"/><path d="M16 24h16M24 16v16" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg><div class="font-semibold mb-1" style="color:var(--text-2)">No themes yet</div><div class="text-sm" style="color:var(--text-3)">Classify at least 3 issues, then click "Generate Themes"</div></div>`;
+    return;
+  }
+  const totalBudget = themes.reduce((s, t) => s + (t.budget || 0), 0);
+  document.getElementById('budget-summary').classList.remove('hidden');
+  document.getElementById('budget-total').textContent = `$${totalBudget} / $100 allocated`;
+  document.getElementById('budget-bar-segments').innerHTML = themes.map((t, i) => {
+    const col = THEME_COLORS[i % THEME_COLORS.length];
+    return `<div style="width:${((t.budget||0)).toFixed(1)}%;background:${col};height:100%;display:inline-block" title="${t.name}: $${t.budget}"></div>`;
+  }).join('');
+  document.getElementById('budget-legend').innerHTML = themes.map((t, i) => {
+    const col = THEME_COLORS[i % THEME_COLORS.length];
+    return `<div class="flex items-center gap-1.5 text-xs" style="color:var(--text-2)"><span style="width:10px;height:10px;border-radius:3px;background:${col};display:inline-block;flex-shrink:0"></span>${t.name} <span style="color:var(--text-3)">$${t.budget}</span></div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="grid grid-cols-1 gap-3">${themes.map((t, i) => {
+    const col = THEME_COLORS[i % THEME_COLORS.length];
+    const issueCount = (t.issueIds || []).length;
+    return `<div class="theme-card" style="border-left:3px solid ${col}">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="badge" style="background:${col}18;color:${col};border:1px solid ${col}40;font-size:10px">#${t.rank}</span>
+            <span class="font-semibold text-sm" style="color:var(--text)">${t.name}</span>
+            <span class="text-xs" style="color:var(--text-3)">${issueCount} issue${issueCount !== 1 ? 's' : ''}</span>
+          </div>
+          <p class="text-xs leading-relaxed mb-3" style="color:var(--text-2)">${t.description}</p>
+          <div class="flex items-center gap-3">
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs" style="color:var(--text-3)">Budget allocation</span>
+                <span class="text-xs font-bold" style="color:${col}">$${t.budget}</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${t.budget}%;background:${col}"></div></div>
+            </div>
+          </div>
+        </div>
+        <button onclick="viewThemeStrategy(${t.id})" class="btn-secondary btn-sm" style="white-space:nowrap;flex-shrink:0">View Strategy →</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ─── STRATEGY / 4-QUADRANT ────────────────────────────────────────────────────
+
+function quadrantOf(s) {
+  if ( s.valueScore >= 5.5 && s.effortScore < 5.5) return 'q1';
+  if ( s.valueScore >= 5.5 && s.effortScore >= 5.5) return 'q2';
+  if ( s.valueScore <  5.5 && s.effortScore < 5.5) return 'q3';
+  return 'q4';
+}
+
+const QUADRANT_META = {
+  q1: { label: 'Do First',         color: '#1A7A48', bg: '#EEFAF3', border: '#AEEAC8' },
+  q2: { label: 'Plan for Quarter', color: '#CC6B48', bg: '#FDF2EE', border: '#F0C4B0' },
+  q3: { label: 'Do in Slack',      color: '#7A6A60', bg: '#F7F3ED', border: '#E5DDD2' },
+  q4: { label: 'Drop',             color: '#B83222', bg: '#FEF0EE', border: '#F5C0B8' }
+};
+
+function renderStrategyThemeSelect() {
+  const sel = document.getElementById('strategy-theme-select');
+  sel.innerHTML = '<option value="">— Select a theme —</option>' +
+    themes.map(t => `<option value="${t.id}"${t.id === selectedThemeId ? ' selected' : ''}>${t.name}</option>`).join('');
+}
+
+async function onThemeSelect() {
+  const val = document.getElementById('strategy-theme-select').value;
+  selectedThemeId = val ? parseInt(val) : null;
+  document.getElementById('btn-gen-solutions').disabled = !selectedThemeId;
+  solutions = selectedThemeId ? await api('GET', `/api/solutions?theme_id=${selectedThemeId}`) : [];
+  renderMatrix();
+}
+
+async function viewThemeStrategy(id) {
+  switchTab('strategy');
+  selectedThemeId = id;
+  document.getElementById('strategy-theme-select').value = id;
+  document.getElementById('btn-gen-solutions').disabled = false;
+  solutions = await api('GET', `/api/solutions?theme_id=${id}`);
+  renderMatrix();
+}
+
+async function generateSolutions() {
+  if (!selectedThemeId) return;
+  const btn = document.getElementById('btn-gen-solutions');
+  const spin = document.getElementById('spin-solutions');
+  btn.disabled = true; spin.classList.remove('hidden');
+  try {
+    const data = await api('POST', '/api/solutions/generate', { theme_id: selectedThemeId });
+    if (data.error) { showToast(data.error, 'error'); return; }
+    solutions = data;
+    renderMatrix();
+    showToast(`✦ ${solutions.length} solutions generated`, 'ai');
+  } catch(e) { showToast('Request failed', 'error'); }
+  finally { btn.disabled = false; spin.classList.add('hidden'); }
+}
+
+function renderMatrix() {
+  const content = document.getElementById('strategy-content');
+  const empty   = document.getElementById('strategy-empty');
+  if (!selectedThemeId) { content.classList.add('hidden'); empty.classList.remove('hidden'); return; }
+  content.classList.remove('hidden'); empty.classList.add('hidden');
+
+  document.getElementById('matrix-dots').innerHTML = solutions.map((s, idx) => {
+    const xPct = ((s.effortScore - 1) / 9 * 100).toFixed(1);
+    const yPct = ((10 - s.valueScore) / 9 * 100).toFixed(1);
+    const col  = QUADRANT_META[quadrantOf(s)].color;
+    return `<div class="sol-dot" style="left:${xPct}%;top:${yPct}%;background:${col}">
+      ${idx + 1}
+      <div class="sol-dot-tooltip">${s.title}</div>
+    </div>`;
+  }).join('');
+
+  const grouped = { q1: [], q2: [], q3: [], q4: [] };
+  solutions.forEach((s, idx) => grouped[quadrantOf(s)].push({ ...s, num: idx + 1 }));
+
+  document.getElementById('solutions-by-quadrant').innerHTML =
+    ['q1','q2','q3','q4'].filter(q => grouped[q].length).map(q => {
+      const m = QUADRANT_META[q];
+      return `<div class="quadrant-section" style="border-color:${m.border}">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="text-xs font-bold uppercase tracking-wide" style="color:${m.color}">${m.label}</div>
+          <span class="badge" style="background:${m.bg};color:${m.color};border:1px solid ${m.border}">${grouped[q].length}</span>
+        </div>
+        ${grouped[q].map(s => `<div class="sol-card">
+          <div class="flex items-start gap-2">
+            <div style="width:20px;height:20px;border-radius:50%;background:${m.color};color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px">${s.num}</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold mb-0.5" style="color:var(--text)">${s.title}</div>
+              <div class="text-xs leading-snug mb-2" style="color:var(--text-2)">${s.description}</div>
+              <div class="flex gap-3 text-xs" style="color:var(--text-3)">
+                <span>Value <strong style="color:${m.color}">${s.valueScore}/10</strong></span>
+                <span>Effort <strong style="color:var(--text-2)">${s.effortScore}/10</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    }).join('');
 }
 
 init();
