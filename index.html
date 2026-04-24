@@ -6,195 +6,436 @@
   <title>PriorityOS — AI Issue Triage</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    *{font-family:'Inter',sans-serif}
-    .tab-active{border-bottom:2px solid #4361ee;color:#4361ee}
-    .card{background:white;border-radius:12px;border:1px solid #e5e7eb;padding:20px}
-    .badge-must{background:#fef2f2;color:#ef4444;border:1px solid #fecaca}
-    .badge-should{background:#fffbeb;color:#d97706;border:1px solid #fde68a}
-    .badge-could{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
-    .badge-wont{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}
-    .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em;display:inline-block}
-    .rice-high{color:#16a34a;font-weight:700}
-    .rice-med{color:#d97706;font-weight:700}
-    .rice-low{color:#9ca3af;font-weight:600}
-    .source-tag{font-size:11px;padding:2px 7px;border-radius:4px}
-    .tier-escalate{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
-    .tier-sprint{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
-    .tier-future{background:#f9fafb;color:#6b7280;border:1px solid #e5e7eb}
-    .tier-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;display:inline-block}
-    .progress-bar{height:6px;border-radius:3px;background:#e5e7eb}
-    .progress-fill{height:6px;border-radius:3px;transition:width .6s ease}
-    input,select,textarea{border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;width:100%;outline:none;transition:border-color .2s}
-    input:focus,select:focus,textarea:focus{border-color:#4361ee;box-shadow:0 0 0 3px rgba(67,97,238,.1)}
-    label{font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;display:block}
-    .btn-primary{background:#4361ee;color:white;padding:9px 20px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:background .2s}
-    .btn-primary:hover{background:#3a0ca3}
-    .btn-primary:disabled{background:#a5b4fc;cursor:not-allowed}
-    .btn-secondary{background:white;color:#374151;padding:8px 16px;border-radius:8px;font-weight:500;font-size:13px;cursor:pointer;border:1px solid #d1d5db;transition:all .2s}
-    .btn-secondary:hover{background:#f3f4f6}
-    .btn-ai{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:5px 12px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;border:none;transition:opacity .2s;display:inline-flex;align-items:center;gap:4px}
-    .btn-ai:hover{opacity:.85}
-    .btn-ai:disabled{opacity:.5;cursor:not-allowed}
-    .btn-sm{padding:5px 12px;font-size:12px}
-    .btn-danger{background:white;color:#ef4444;border:1px solid #fca5a5;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer}
-    .btn-danger:hover{background:#fef2f2}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
-    .modal{background:white;border-radius:16px;width:100%;max-width:580px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
-    .step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
-    .animate-slide{animation:slideIn .25s ease}
-    @keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-    .spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
-    .spinner-dark{border-color:rgba(67,97,238,.2);border-top-color:#4361ee}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .ai-pill{background:linear-gradient(135deg,#667eea15,#764ba215);border:1px solid #667eea30;border-radius:8px;padding:10px 14px}
-    .ai-badge{background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.05em}
-    .issue-row{border-bottom:1px solid #f3f4f6;padding:14px 0;transition:background .1s}
-    .issue-row:last-child{border-bottom:none}
-    .empty-state{text-align:center;padding:48px 20px;color:#9ca3af}
-    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
-    .toast{position:fixed;bottom:24px;right:24px;background:#1f2937;color:white;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;animation:slideIn .2s ease;box-shadow:0 8px 24px rgba(0,0,0,.15)}
-    .ai-reasoning{font-size:11px;color:#6b7280;background:#f9fafb;border-radius:6px;padding:6px 10px;margin-top:6px;border-left:3px solid #c4b5fd;font-style:italic}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --primary-light: #EEF2FF;
+      --primary-border: #C7D2FE;
+      --surface: #FFFFFF;
+      --bg: #F8FAFC;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --text-2: #475569;
+      --text-3: #94A3B8;
+    }
+
+    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); }
+
+    /* ── CARDS ── */
+    .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+
+    /* ── BADGES ── */
+    .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; text-transform: uppercase; letter-spacing: .04em; display: inline-flex; align-items: center; }
+    .badge-must   { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .badge-should { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+    .badge-could  { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
+    .badge-wont   { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+
+    /* ── TIER BADGES ── */
+    .tier-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; }
+    .tier-escalate { background: #FFF1F2; color: #BE123C; border: 1px solid #FECDD3; }
+    .tier-sprint   { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .tier-future   { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+
+    /* ── RICE COLORS ── */
+    .rice-high { color: #15803D; font-weight: 700; }
+    .rice-med  { color: #B45309; font-weight: 700; }
+    .rice-low  { color: #94A3B8; font-weight: 600; }
+
+    /* ── SOURCE TAGS ── */
+    .source-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+
+    /* ── FORMS ── */
+    input, select, textarea {
+      border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px;
+      font-size: 14px; width: 100%; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      background: var(--surface); color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+    }
+    label { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; display: block; }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      background: var(--primary); color: white; padding: 8px 16px;
+      border-radius: 8px; font-weight: 600; font-size: 13.5px;
+      cursor: pointer; border: none; transition: background .15s, transform .1s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { background: #A5B4FC; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface); color: var(--text-2); padding: 8px 14px;
+      border-radius: 8px; font-weight: 500; font-size: 13px;
+      cursor: pointer; border: 1px solid var(--border); transition: all .15s;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; color: var(--text); }
+
+    .btn-ghost {
+      background: transparent; color: var(--text-3); padding: 6px 10px;
+      border-radius: 6px; font-size: 13px; cursor: pointer; border: none; transition: all .15s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-ghost:hover { background: #F1F5F9; color: var(--text-2); }
+
+    .btn-danger {
+      background: var(--surface); color: #DC2626; border: 1px solid #FECACA;
+      padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .15s; display: inline-flex; align-items: center;
+    }
+    .btn-danger:hover { background: #FEF2F2; }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white;
+      padding: 6px 13px; border-radius: 7px; font-weight: 600; font-size: 12px;
+      cursor: pointer; border: none; transition: opacity .2s, transform .1s;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-ai:hover { opacity: .88; }
+    .btn-ai:active { transform: scale(.97); }
+    .btn-ai:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-sm { padding: 5px 12px !important; font-size: 12.5px !important; }
+
+    /* ── NAV TABS ── */
+    .nav-tab {
+      padding: 6px 13px; border-radius: 7px; font-size: 13.5px; font-weight: 500;
+      cursor: pointer; color: var(--text-2); border: none; background: transparent;
+      transition: all .15s; white-space: nowrap;
+    }
+    .nav-tab:hover { color: var(--text); background: #F1F5F9; }
+    .nav-tab.tab-active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+    /* ── FILTER BUTTONS ── */
+    .filter-btn {
+      padding: 6px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 500;
+      cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-2); transition: all .15s;
+    }
+    .filter-btn:hover { border-color: #CBD5E1; }
+    .filter-btn.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary-border); font-weight: 600; }
+
+    /* ── MoSCoW CLASSIFY BUTTONS ── */
+    .cls-btn {
+      padding: 5px 11px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-2); transition: all .15s;
+    }
+    .cls-btn:hover { border-color: #94A3B8; }
+    .cls-btn.active-must   { background: #FEF2F2; border-color: #FECACA; color: #B91C1C; }
+    .cls-btn.active-should { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+    .cls-btn.active-could  { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+    .cls-btn.active-wont   { background: #F8FAFC; border-color: #E2E8F0; color: #64748B; }
+
+    /* ── TOGGLE BUTTONS (RICE modal) ── */
+    .tog-btn {
+      padding: 8px 4px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-2); transition: all .15s; text-align: center; width: 100%;
+    }
+    .tog-btn:hover { border-color: var(--primary-border); color: var(--primary); }
+    .tog-btn.selected { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+    /* ── ISSUE ROWS ── */
+    .issue-row { border-bottom: 1px solid #F1F5F9; padding: 16px 0; transition: background .12s; border-radius: 8px; }
+    .issue-row:last-child { border-bottom: none; }
+    .issue-row:hover { background: #F8FAFC; padding: 16px 12px; margin: 0 -12px; }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,.5);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal {
+      background: var(--surface); border-radius: 16px; width: 100%; max-width: 560px;
+      box-shadow: 0 24px 64px rgba(15,23,42,.18), 0 0 0 1px rgba(15,23,42,.06);
+      max-height: 92vh; overflow-y: auto;
+    }
+    .modal-header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; }
+    .modal-body   { padding: 22px 28px; }
+    .modal-footer { padding: 16px 28px 22px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border); }
+
+    /* ── MISC ── */
+    .step-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .rank-num { width: 28px; height: 28px; border-radius: 8px; background: #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+    .progress-bar { height: 6px; border-radius: 3px; background: #E2E8F0; overflow: hidden; }
+    .progress-fill { height: 6px; border-radius: 3px; transition: width .6s ease; }
+    .animate-slide { animation: slideIn .22s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .spinner { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ai-pill { background: linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.06)); border: 1px solid rgba(99,102,241,.2); border-radius: 10px; padding: 14px 16px; }
+    .ai-badge { background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: .05em; }
+    .ai-reasoning { font-size: 11.5px; color: var(--text-2); background: #F8FAFC; border-radius: 6px; padding: 8px 12px; margin-top: 8px; border-left: 3px solid #A5B4FC; font-style: italic; line-height: 1.55; }
+    .empty-state { text-align: center; padding: 56px 24px; color: var(--text-3); }
+    .empty-icon { width: 44px; height: 44px; margin: 0 auto 14px; opacity: .3; }
+    ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+    .toast { position: fixed; bottom: 28px; right: 28px; background: #0F172A; color: white; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 999; animation: slideIn .2s ease; box-shadow: 0 8px 32px rgba(15,23,42,.22); display: flex; align-items: center; gap: 8px; }
+    .pipeline-step { border-radius: 10px; padding: 18px; text-align: center; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen">
 
-<!-- HEADER -->
-<header class="bg-white border-b border-gray-200 sticky top-0 z-40">
-  <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#4361ee,#764ba2)">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
-      </div>
-      <div>
-        <div class="font-bold text-gray-900 text-base leading-tight">PriorityOS</div>
-        <div class="text-xs text-gray-400 leading-tight flex items-center gap-1">
-          MoSCoW → RICE Triage
-          <span id="ai-status-pill" class="hidden ai-badge ml-1">AI ON</span>
+<!-- ══ HEADER ══ -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40" style="box-shadow:0 1px 4px rgba(15,23,42,.07)">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="flex items-center justify-between h-14 gap-6">
+
+      <!-- Logo -->
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#4F46E5,#7C3AED)">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 4h12M2 8h8M2 12h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="font-bold text-slate-900 text-sm tracking-tight leading-tight">PriorityOS</div>
+          <div class="text-xs text-slate-400 leading-tight flex items-center gap-1.5">
+            MoSCoW · RICE Triage
+            <span id="ai-status-pill" class="hidden ai-badge">AI</span>
+          </div>
         </div>
       </div>
+
+      <!-- Nav -->
+      <nav class="flex items-center gap-1">
+        <button onclick="switchTab('intake')"    id="tab-intake"    class="nav-tab tab-active">Intake</button>
+        <button onclick="switchTab('moscow')"    id="tab-moscow"    class="nav-tab">MoSCoW</button>
+        <button onclick="switchTab('rice')"      id="tab-rice"      class="nav-tab">RICE Scoring</button>
+        <button onclick="switchTab('backlog')"   id="tab-backlog"   class="nav-tab">Backlog</button>
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab">Dashboard</button>
+      </nav>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="text-xs text-slate-400 hidden" id="ai-status-text"></span>
+        <button onclick="seedData()" class="btn-ghost text-xs" style="color:#64748B">Load Samples</button>
+        <button onclick="clearAll()" class="btn-ghost text-xs" style="color:#F87171">Clear All</button>
+        <button onclick="openAddIssue()" class="btn-primary btn-sm">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Add Issue
+        </button>
+      </div>
     </div>
-    <div class="flex items-center gap-3">
-      <span class="text-xs text-gray-400 hidden" id="ai-status-text"></span>
-      <button onclick="clearAll()" class="btn-secondary btn-sm text-red-500 border-red-200 hover:bg-red-50">Clear All</button>
-      <button onclick="seedData()" class="btn-secondary btn-sm">Load Sample Data</button>
-      <button onclick="openAddIssue()" class="btn-primary btn-sm">+ Add Issue</button>
-    </div>
-  </div>
-  <div class="max-w-6xl mx-auto px-6 flex">
-    <button onclick="switchTab('intake')"    id="tab-intake"    class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all tab-active">Intake</button>
-    <button onclick="switchTab('moscow')"    id="tab-moscow"    class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">MoSCoW</button>
-    <button onclick="switchTab('rice')"      id="tab-rice"      class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">RICE Scoring</button>
-    <button onclick="switchTab('backlog')"   id="tab-backlog"   class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Backlog</button>
-    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-5 py-3 text-sm font-medium text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-all">Dashboard</button>
   </div>
 </header>
 
 <main class="max-w-6xl mx-auto px-6 py-8">
 
-<!-- ══ TAB: INTAKE ══ -->
+<!-- ══ INTAKE ══ -->
 <div id="view-intake" class="animate-slide">
-  <div class="flex items-center justify-between mb-6">
+  <div class="flex items-start justify-between mb-6">
     <div>
-      <h2 class="text-xl font-bold text-gray-900">Issue Intake Queue</h2>
-      <p class="text-sm text-gray-500 mt-1">All incoming issues from support, analytics, sales, and internal stakeholders.</p>
+      <h1 class="text-xl font-bold text-slate-900">Issue Intake Queue</h1>
+      <p class="text-sm text-slate-500 mt-1">All incoming issues from support, analytics, sales, and internal stakeholders.</p>
     </div>
   </div>
-  <div class="card mb-4">
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2"><div class="step-dot bg-blue-600 text-white text-xs">1</div><span class="text-sm font-semibold text-blue-600">Intake</span></div>
-      <div class="flex-1 h-px bg-gray-200"></div>
-      <div class="flex items-center gap-2"><div class="step-dot bg-gray-100 text-gray-400 text-xs">2</div><span class="text-sm text-gray-400">MoSCoW Filter</span></div>
-      <div class="flex-1 h-px bg-gray-200"></div>
-      <div class="flex items-center gap-2"><div class="step-dot bg-gray-100 text-gray-400 text-xs">3</div><span class="text-sm text-gray-400">RICE Score</span></div>
-      <div class="flex-1 h-px bg-gray-200"></div>
-      <div class="flex items-center gap-2"><div class="step-dot bg-gray-100 text-gray-400 text-xs">4</div><span class="text-sm text-gray-400">Backlog</span></div>
+
+  <!-- Pipeline stepper -->
+  <div class="card mb-5" style="padding:16px 24px">
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2"><div class="step-dot bg-indigo-600 text-white text-xs">1</div><span class="text-sm font-semibold text-indigo-600">Intake</span></div>
+      <div class="flex-1 h-px bg-slate-200"></div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-slate-100 text-slate-400 text-xs">2</div><span class="text-sm text-slate-400">MoSCoW Filter</span></div>
+      <div class="flex-1 h-px bg-slate-200"></div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-slate-100 text-slate-400 text-xs">3</div><span class="text-sm text-slate-400">RICE Score</span></div>
+      <div class="flex-1 h-px bg-slate-200"></div>
+      <div class="flex items-center gap-2"><div class="step-dot bg-slate-100 text-slate-400 text-xs">4</div><span class="text-sm text-slate-400">Backlog</span></div>
     </div>
   </div>
+
+  <!-- Stat cards -->
   <div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="card"><div class="text-2xl font-bold text-gray-900" id="stat-total">0</div><div class="text-xs text-gray-500 mt-1">Total Issues</div></div>
-    <div class="card"><div class="text-2xl font-bold text-amber-600" id="stat-unclassified">0</div><div class="text-xs text-gray-500 mt-1">Awaiting Triage</div></div>
-    <div class="card"><div class="text-2xl font-bold text-green-600" id="stat-forwarded">0</div><div class="text-xs text-gray-500 mt-1">Forwarded to RICE</div></div>
-    <div class="card"><div class="text-2xl font-bold text-gray-400" id="stat-eliminated">0</div><div class="text-xs text-gray-500 mt-1">Eliminated (Noise)</div></div>
+    <div class="stat-card">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Total Issues</div>
+      <div class="text-3xl font-bold text-slate-900" id="stat-total">0</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #FBBF24">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Awaiting Triage</div>
+      <div class="text-3xl font-bold text-amber-500" id="stat-unclassified">0</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #34D399">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Forwarded to RICE</div>
+      <div class="text-3xl font-bold text-emerald-600" id="stat-forwarded">0</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #E2E8F0">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Eliminated</div>
+      <div class="text-3xl font-bold text-slate-400" id="stat-eliminated">0</div>
+    </div>
   </div>
-  <div class="card"><div id="intake-list"><div class="empty-state"><div class="text-4xl mb-3">📋</div><div class="font-medium text-gray-600 mb-1">No issues yet</div><div class="text-sm">Click "Add Issue" or "Load Sample Data" to get started</div></div></div></div>
+
+  <div class="card"><div id="intake-list">
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="4" stroke="#94A3B8" stroke-width="2"/><path d="M14 18h20M14 24h14M14 30h10" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="font-semibold text-slate-600 mb-1">No issues yet</div>
+      <div class="text-sm">Click "Add Issue" or "Load Samples" to get started</div>
+    </div>
+  </div></div>
 </div>
 
-<!-- ══ TAB: MoSCoW ══ -->
+<!-- ══ MoSCoW ══ -->
 <div id="view-moscow" class="animate-slide hidden">
   <div class="mb-6">
-    <h2 class="text-xl font-bold text-gray-900">MoSCoW Classification</h2>
-    <p class="text-sm text-gray-500 mt-1">Stage 1: Classify each issue. Only MUST HAVE and top SHOULD HAVE advance to RICE.</p>
+    <h1 class="text-xl font-bold text-slate-900">MoSCoW Classification</h1>
+    <p class="text-sm text-slate-500 mt-1">Stage 1: Classify each issue. Only Must Have and top Should Have advance to RICE.</p>
   </div>
   <div class="grid grid-cols-4 gap-3 mb-6">
-    <div class="card border-l-4 border-l-red-400 py-3"><span class="badge badge-must mb-1 block">Must Have</span><div class="text-xs text-gray-500">Revenue-critical, SLA breach, core function broken</div></div>
-    <div class="card border-l-4 border-l-amber-400 py-3"><span class="badge badge-should mb-1 block">Should Have</span><div class="text-xs text-gray-500">Important, workaround exists, affects >10% users</div></div>
-    <div class="card border-l-4 border-l-blue-400 py-3"><span class="badge badge-could mb-1 block">Could Have</span><div class="text-xs text-gray-500">Nice to have, low urgency, &lt;5% impact</div></div>
-    <div class="card border-l-4 border-l-gray-300 py-3"><span class="badge badge-wont mb-1 block">Won't Have</span><div class="text-xs text-gray-500">Noise, out of scope, duplicate, feature creep</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #EF4444"><span class="badge badge-must mb-2">Must Have</span><div class="text-xs text-slate-500 leading-snug">Revenue-critical, SLA breach, core function broken</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #F59E0B"><span class="badge badge-should mb-2">Should Have</span><div class="text-xs text-slate-500 leading-snug">Important, workaround exists, affects &gt;10% users</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #3B82F6"><span class="badge badge-could mb-2">Could Have</span><div class="text-xs text-slate-500 leading-snug">Nice to have, low urgency, &lt;5% impact</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #CBD5E1"><span class="badge badge-wont mb-2">Won't Have</span><div class="text-xs text-slate-500 leading-snug">Noise, out of scope, duplicate, feature creep</div></div>
   </div>
-  <div class="card" id="moscow-list"><div class="empty-state"><div class="text-4xl mb-3">🏷️</div><div class="font-medium text-gray-600 mb-1">No issues to classify</div><div class="text-sm">Add issues in the Intake tab first</div></div></div>
+  <div class="card" id="moscow-list">
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><path d="M24 6l4 10h10l-8 6 3 10-9-6-9 6 3-10-8-6h10z" stroke="#94A3B8" stroke-width="2" stroke-linejoin="round"/></svg>
+      <div class="font-semibold text-slate-600 mb-1">No issues to classify</div>
+      <div class="text-sm">Add issues in the Intake tab first</div>
+    </div>
+  </div>
 </div>
 
-<!-- ══ TAB: RICE ══ -->
+<!-- ══ RICE ══ -->
 <div id="view-rice" class="animate-slide hidden">
   <div class="mb-6">
-    <h2 class="text-xl font-bold text-gray-900">RICE Scoring</h2>
-    <p class="text-sm text-gray-500 mt-1">Stage 2: Score forwarded issues. RICE = (Reach × Impact × Confidence) ÷ Effort</p>
+    <h1 class="text-xl font-bold text-slate-900">RICE Scoring</h1>
+    <p class="text-sm text-slate-500 mt-1">Stage 2: Score forwarded issues. RICE = (Reach × Impact × Confidence) ÷ Effort</p>
   </div>
   <div class="grid grid-cols-4 gap-3 mb-6">
-    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Reach</div><div class="text-xs text-gray-500">Accounts affected per sprint</div><div class="text-xs text-blue-600 mt-1 font-medium">1–10 scale</div></div>
-    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Impact</div><div class="text-xs text-gray-500">Effect on ROAS, conversion, retention</div><div class="text-xs text-blue-600 mt-1 font-medium">0.5 / 1 / 2 / 3</div></div>
-    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Confidence</div><div class="text-xs text-gray-500">Certainty in estimates</div><div class="text-xs text-blue-600 mt-1 font-medium">20% / 50% / 80% / 100%</div></div>
-    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-1">Effort</div><div class="text-xs text-gray-500">Eng + Design person-weeks</div><div class="text-xs text-blue-600 mt-1 font-medium">0.5 / 1 / 2 / 4 / 8</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Reach</div><div class="text-sm font-medium text-slate-700 mb-1.5">Accounts affected per sprint</div><div class="text-xs text-indigo-600 font-semibold">1–10 scale</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Impact</div><div class="text-sm font-medium text-slate-700 mb-1.5">Effect on ROAS, conversion, retention</div><div class="text-xs text-indigo-600 font-semibold">0.5 / 1 / 2 / 3</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Confidence</div><div class="text-sm font-medium text-slate-700 mb-1.5">Certainty in estimates</div><div class="text-xs text-indigo-600 font-semibold">20% / 50% / 80% / 100%</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Effort</div><div class="text-sm font-medium text-slate-700 mb-1.5">Engineering person-weeks</div><div class="text-xs text-indigo-600 font-semibold">0.5 / 1 / 2 / 4 / 8</div></div>
   </div>
-  <div class="card" id="rice-list"><div class="empty-state"><div class="text-4xl mb-3">🎯</div><div class="font-medium text-gray-600 mb-1">No issues ready for scoring</div><div class="text-sm">Classify issues as MUST or SHOULD HAVE first</div></div></div>
+  <div class="card" id="rice-list">
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="#94A3B8" stroke-width="2"/><path d="M24 14v10l6 6" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="font-semibold text-slate-600 mb-1">No issues ready for scoring</div>
+      <div class="text-sm">Classify issues as Must or Should Have first</div>
+    </div>
+  </div>
 </div>
 
-<!-- ══ TAB: BACKLOG ══ -->
+<!-- ══ BACKLOG ══ -->
 <div id="view-backlog" class="animate-slide hidden">
   <div class="flex items-center justify-between mb-6">
     <div>
-      <h2 class="text-xl font-bold text-gray-900">Prioritized Backlog</h2>
-      <p class="text-sm text-gray-500 mt-1">Final ranked output — sorted by RICE score descending.</p>
+      <h1 class="text-xl font-bold text-slate-900">Prioritized Backlog</h1>
+      <p class="text-sm text-slate-500 mt-1">Final ranked output — sorted by RICE score descending.</p>
     </div>
     <div class="flex gap-2">
-      <button onclick="filterBacklog('all')"      id="filter-all"      class="btn-secondary btn-sm bg-gray-100">All</button>
-      <button onclick="filterBacklog('escalate')" id="filter-escalate" class="btn-secondary btn-sm">🚨 Escalation</button>
-      <button onclick="filterBacklog('sprint')"   id="filter-sprint"   class="btn-secondary btn-sm">✅ Sprint</button>
-      <button onclick="filterBacklog('future')"   id="filter-future"   class="btn-secondary btn-sm">🔮 Future</button>
+      <button onclick="filterBacklog('all')"      id="filter-all"      class="filter-btn active">All</button>
+      <button onclick="filterBacklog('escalate')" id="filter-escalate" class="filter-btn">Escalation</button>
+      <button onclick="filterBacklog('sprint')"   id="filter-sprint"   class="filter-btn">Sprint</button>
+      <button onclick="filterBacklog('future')"   id="filter-future"   class="filter-btn">Future</button>
     </div>
   </div>
-  <div id="escalation-alert" class="hidden mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-    <div class="text-lg">🚨</div>
-    <div><div class="font-semibold text-red-700 text-sm">Escalation Items Require Immediate Attention</div><div class="text-xs text-red-600 mt-1" id="escalation-count"></div></div>
+
+  <div id="escalation-alert" class="hidden mb-4 rounded-xl p-4 flex items-start gap-3" style="background:#FFF1F2;border:1px solid #FECDD3">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="margin-top:1px;flex-shrink:0"><path d="M9 2L1 16h16L9 2z" stroke="#BE123C" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 8v3" stroke="#BE123C" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="13.5" r=".75" fill="#BE123C"/></svg>
+    <div>
+      <div class="font-semibold text-rose-700 text-sm">Escalation Items Require Immediate Attention</div>
+      <div class="text-xs text-rose-600 mt-0.5" id="escalation-count"></div>
+    </div>
   </div>
-  <div class="card" id="backlog-list"><div class="empty-state"><div class="text-4xl mb-3">📊</div><div class="font-medium text-gray-600 mb-1">Backlog is empty</div><div class="text-sm">Score issues in the RICE tab to populate the backlog</div></div></div>
+
+  <div class="card" id="backlog-list">
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="8" y="10" width="32" height="28" rx="3" stroke="#94A3B8" stroke-width="2"/><path d="M16 18h16M16 24h12M16 30h8" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="font-semibold text-slate-600 mb-1">Backlog is empty</div>
+      <div class="text-sm">Score issues in the RICE tab to populate the backlog</div>
+    </div>
+  </div>
 </div>
 
-<!-- ══ TAB: DASHBOARD ══ -->
+<!-- ══ DASHBOARD ══ -->
 <div id="view-dashboard" class="animate-slide hidden">
   <div class="mb-6">
-    <h2 class="text-xl font-bold text-gray-900">PM Dashboard</h2>
-    <p class="text-sm text-gray-500 mt-1">System health metrics and triage performance.</p>
+    <h1 class="text-xl font-bold text-slate-900">PM Dashboard</h1>
+    <p class="text-sm text-slate-500 mt-1">System health metrics and triage performance overview.</p>
   </div>
+
   <div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="card"><div class="text-xs text-gray-500 mb-1">Noise Eliminated</div><div class="text-3xl font-bold text-green-600" id="kpi-noise">—</div><div class="text-xs text-gray-400 mt-1">Target: 50–80%</div><div class="progress-bar mt-2"><div class="progress-fill bg-green-400" id="kpi-noise-bar" style="width:0%"></div></div></div>
-    <div class="card"><div class="text-xs text-gray-500 mb-1">Escalation Items</div><div class="text-3xl font-bold text-red-600" id="kpi-escalation">0</div><div class="text-xs text-gray-400 mt-1">Target: &lt;5 active</div></div>
-    <div class="card"><div class="text-xs text-gray-500 mb-1">Sprint Backlog</div><div class="text-3xl font-bold text-blue-600" id="kpi-sprint">0</div><div class="text-xs text-gray-400 mt-1">RICE score 20–39</div></div>
-    <div class="card"><div class="text-xs text-gray-500 mb-1">Pipeline Completion</div><div class="text-3xl font-bold text-gray-700" id="kpi-completion">0%</div><div class="text-xs text-gray-400 mt-1">Issues fully scored</div></div>
+    <div class="stat-card">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Noise Eliminated</div>
+      <div class="text-3xl font-bold text-emerald-600 mb-1" id="kpi-noise">—</div>
+      <div class="text-xs text-slate-400 mb-2">Target: 50–80%</div>
+      <div class="progress-bar"><div class="progress-fill bg-emerald-400" id="kpi-noise-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Escalation Items</div>
+      <div class="text-3xl font-bold text-rose-600 mb-1" id="kpi-escalation">0</div>
+      <div class="text-xs text-slate-400">Target: &lt;5 active</div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sprint Backlog</div>
+      <div class="text-3xl font-bold text-indigo-600 mb-1" id="kpi-sprint">0</div>
+      <div class="text-xs text-slate-400">RICE score 20–39</div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Pipeline Completion</div>
+      <div class="text-3xl font-bold text-slate-700 mb-1" id="kpi-completion">0%</div>
+      <div class="text-xs text-slate-400">Issues fully scored</div>
+    </div>
   </div>
-  <div class="grid grid-cols-2 gap-6 mb-6">
-    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-4">MoSCoW Distribution</div><div id="moscow-breakdown"><div class="text-sm text-gray-400">No data yet</div></div></div>
-    <div class="card"><div class="font-semibold text-sm text-gray-700 mb-4">RICE Tier Distribution</div><div id="rice-breakdown"><div class="text-sm text-gray-400">No data yet</div></div></div>
+
+  <div class="grid grid-cols-2 gap-5 mb-5">
+    <div class="card">
+      <div class="text-sm font-semibold text-slate-700 mb-4">MoSCoW Distribution</div>
+      <div id="moscow-breakdown"><div class="text-sm text-slate-400">No data yet</div></div>
+    </div>
+    <div class="card">
+      <div class="text-sm font-semibold text-slate-700 mb-4">RICE Tier Distribution</div>
+      <div id="rice-breakdown"><div class="text-sm text-slate-400">No data yet</div></div>
+    </div>
   </div>
-  <div class="card mb-6"><div class="font-semibold text-sm text-gray-700 mb-4">Issue Source Mix</div><div class="grid grid-cols-5 gap-4" id="source-breakdown"><div class="text-sm text-gray-400">No data yet</div></div></div>
+
+  <div class="card mb-5">
+    <div class="text-sm font-semibold text-slate-700 mb-4">Issue Source Mix</div>
+    <div class="grid grid-cols-5 gap-4" id="source-breakdown"><div class="text-sm text-slate-400">No data yet</div></div>
+  </div>
+
   <div class="card">
-    <div class="font-semibold text-sm text-gray-700 mb-4">Pipeline Overview</div>
-    <div class="grid grid-cols-4 gap-4">
-      <div class="text-center p-4 bg-gray-50 rounded-lg"><div class="text-2xl mb-2">📥</div><div class="font-semibold text-xs text-gray-700 mb-1">Intake</div><div class="text-xs text-gray-500">Issues from support, analytics, sales, internal</div></div>
-      <div class="text-center p-4 bg-amber-50 rounded-lg"><div class="text-2xl mb-2">🏷️</div><div class="font-semibold text-xs text-amber-700 mb-1">MoSCoW Filter</div><div class="text-xs text-gray-500">Removes 50–80% noise. Only MUST + SHOULD advance</div></div>
-      <div class="text-center p-4 bg-blue-50 rounded-lg"><div class="text-2xl mb-2">🎯</div><div class="font-semibold text-xs text-blue-700 mb-1">RICE Score</div><div class="text-xs text-gray-500">Score on Reach, Impact, Confidence, Effort</div></div>
-      <div class="text-center p-4 bg-green-50 rounded-lg"><div class="text-2xl mb-2">📊</div><div class="font-semibold text-xs text-green-700 mb-1">Backlog</div><div class="text-xs text-gray-500">Ranked: Escalation → Sprint → Future</div></div>
+    <div class="text-sm font-semibold text-slate-700 mb-4">Triage Pipeline</div>
+    <div class="grid grid-cols-4 gap-3">
+      <div class="pipeline-step bg-slate-50">
+        <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="3" y="3" width="11" height="11" rx="2" stroke="#64748B" stroke-width="1.4"/><path d="M6 7h5M6 10h3.5" stroke="#64748B" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="text-xs font-semibold text-slate-700 mb-1">Intake</div>
+        <div class="text-xs text-slate-500 leading-snug">Issues from support, analytics, sales, internal</div>
+      </div>
+      <div class="pipeline-step bg-amber-50">
+        <div class="w-9 h-9 rounded-lg bg-white border border-amber-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 2l2 5h5L11.5 10l2 5-5-3-5 3 2-5-4-3h5z" stroke="#D97706" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="text-xs font-semibold text-amber-700 mb-1">MoSCoW Filter</div>
+        <div class="text-xs text-slate-500 leading-snug">Removes 50–80% noise. Only Must + Should advance</div>
+      </div>
+      <div class="pipeline-step bg-indigo-50">
+        <div class="w-9 h-9 rounded-lg bg-white border border-indigo-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="#4F46E5" stroke-width="1.4"/><path d="M8.5 5v3.5l2.5 2.5" stroke="#4F46E5" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="text-xs font-semibold text-indigo-700 mb-1">RICE Score</div>
+        <div class="text-xs text-slate-500 leading-snug">Score on Reach, Impact, Confidence, Effort</div>
+      </div>
+      <div class="pipeline-step bg-emerald-50">
+        <div class="w-9 h-9 rounded-lg bg-white border border-emerald-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="3" y="3" width="11" height="11" rx="2" stroke="#15803D" stroke-width="1.4"/><path d="M5.5 8.5l2 2 4-4" stroke="#15803D" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="text-xs font-semibold text-emerald-700 mb-1">Backlog</div>
+        <div class="text-xs text-slate-500 leading-snug">Ranked: Escalation → Sprint → Future</div>
+      </div>
     </div>
   </div>
 </div>
@@ -204,40 +445,59 @@
 <!-- ══ MODAL: ADD ISSUE ══ -->
 <div id="modal-add" class="modal-overlay hidden">
   <div class="modal">
-    <div class="flex items-center justify-between mb-6">
-      <h3 class="text-lg font-bold text-gray-900">Add New Issue</h3>
-      <button onclick="closeModal('modal-add')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+    <div class="modal-header">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Add New Issue</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Capture and triage an incoming issue</p>
+      </div>
+      <button onclick="closeModal('modal-add')" class="btn-ghost" style="padding:5px 8px;font-size:20px;line-height:1;color:#94A3B8">×</button>
     </div>
-    <div class="space-y-4">
-      <div><label>Issue Title *</label><input id="input-title" type="text" placeholder="e.g. ROAS dashboard returns 0 for all accounts" /></div>
-      <div><label>Description</label><textarea id="input-desc" rows="2" placeholder="Brief context about the issue..."></textarea></div>
-      <div class="grid grid-cols-2 gap-4">
-        <div><label>Source</label>
-          <select id="input-source">
-            <option value="support">Customer Support</option>
-            <option value="analytics">Product Analytics</option>
-            <option value="sales">Sales Feedback</option>
-            <option value="internal">Internal Stakeholder</option>
-            <option value="cs">Customer Success</option>
-          </select>
+    <div class="modal-body">
+      <div class="space-y-4">
+        <div>
+          <label>Issue Title <span class="text-red-400">*</span></label>
+          <input id="input-title" type="text" placeholder="e.g. ROAS dashboard returns 0 for all accounts" />
         </div>
-        <div><label>Customer Tier</label>
-          <select id="input-tier">
-            <option value="standard">Standard</option>
-            <option value="vip">VIP / Enterprise</option>
-          </select>
+        <div>
+          <label>Description</label>
+          <textarea id="input-desc" rows="2" placeholder="Brief context about the issue..."></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label>Source</label>
+            <select id="input-source">
+              <option value="support">Customer Support</option>
+              <option value="analytics">Product Analytics</option>
+              <option value="sales">Sales Feedback</option>
+              <option value="internal">Internal Stakeholder</option>
+              <option value="cs">Customer Success</option>
+            </select>
+          </div>
+          <div>
+            <label>Customer Tier</label>
+            <select id="input-tier">
+              <option value="standard">Standard</option>
+              <option value="vip">VIP / Enterprise</option>
+            </select>
+          </div>
         </div>
       </div>
+
+      <div id="ai-classify-result" class="hidden mt-5 ai-pill">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="ai-badge">AI</span>
+          <span class="text-xs font-semibold text-indigo-700">Classification Suggestion</span>
+        </div>
+        <div id="ai-moscow-result" class="text-sm text-slate-700 mb-1"></div>
+        <div id="ai-reasoning-result" class="ai-reasoning"></div>
+        <div class="text-xs text-slate-400 mt-2">Pre-filled — you can override in the MoSCoW tab.</div>
+      </div>
     </div>
-    <div id="ai-classify-result" class="hidden mt-4 ai-pill">
-      <div class="flex items-center gap-2 mb-2"><span class="ai-badge">AI</span><span class="text-xs font-semibold text-purple-700">Classification Suggestion</span></div>
-      <div id="ai-moscow-result" class="text-sm text-gray-700 mb-1"></div>
-      <div id="ai-reasoning-result" class="ai-reasoning"></div>
-      <div class="text-xs text-gray-400 mt-2">This will be pre-filled — you can override in the MoSCoW tab.</div>
-    </div>
-    <div class="flex gap-3 mt-6 justify-end">
+    <div class="modal-footer">
       <button onclick="closeModal('modal-add')" class="btn-secondary">Cancel</button>
-      <button id="btn-ai-classify" onclick="aiClassifyPreview()" class="btn-ai"><span id="ai-classify-spinner" class="spinner hidden"></span>✦ AI Classify</button>
+      <button id="btn-ai-classify" onclick="aiClassifyPreview()" class="btn-ai">
+        <span id="ai-classify-spinner" class="spinner hidden"></span>✦ AI Classify
+      </button>
       <button onclick="addIssue()" class="btn-primary">Add to Queue</button>
     </div>
   </div>
@@ -246,75 +506,96 @@
 <!-- ══ MODAL: RICE SCORING ══ -->
 <div id="modal-rice" class="modal-overlay hidden">
   <div class="modal">
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="text-lg font-bold text-gray-900">RICE Score This Issue</h3>
-      <button onclick="closeModal('modal-rice')" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+    <div class="modal-header">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">RICE Score This Issue</h3>
+        <p id="rice-modal-title" class="text-xs text-slate-400 mt-0.5 max-w-xs truncate"></p>
+      </div>
+      <button onclick="closeModal('modal-rice')" class="btn-ghost" style="padding:5px 8px;font-size:20px;line-height:1;color:#94A3B8">×</button>
     </div>
-    <div id="rice-modal-title" class="text-sm text-gray-500 mb-1"></div>
+    <div class="modal-body">
 
-    <!-- AI suggest bar -->
-    <div id="ai-suggest-bar" class="hidden ai-pill mb-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2"><span class="ai-badge">AI</span><span class="text-xs font-semibold text-purple-700">Suggested RICE Inputs</span></div>
-        <button id="btn-ai-suggest" onclick="aiSuggestRice()" class="btn-ai btn-sm"><span id="ai-suggest-spinner" class="spinner hidden"></span>✦ AI Suggest</button>
+      <div id="ai-suggest-bar" class="hidden ai-pill mb-5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2"><span class="ai-badge">AI</span><span class="text-xs font-semibold text-indigo-700">Suggested RICE Inputs</span></div>
+          <button id="btn-ai-suggest" onclick="aiSuggestRice()" class="btn-ai btn-sm">
+            <span id="ai-suggest-spinner" class="spinner hidden"></span>✦ AI Suggest
+          </button>
+        </div>
+        <div id="ai-rice-reasoning" class="ai-reasoning mt-2 hidden"></div>
       </div>
-      <div id="ai-rice-reasoning" class="ai-reasoning mt-2 hidden"></div>
-    </div>
 
-    <div class="space-y-5">
-      <div>
-        <label>Reach — accounts affected per sprint</label>
-        <div class="flex items-center gap-3 mt-1">
-          <input type="range" id="rice-reach" min="1" max="10" value="5" oninput="updateRicePreview()" class="flex-1" style="border:none;padding:0;box-shadow:none;width:auto"/>
-          <span id="rice-reach-val" class="font-bold text-blue-600 w-6 text-center">5</span>
+      <div class="space-y-5">
+        <div>
+          <label>Reach — accounts affected per sprint</label>
+          <div class="flex items-center gap-4 mt-2">
+            <input type="range" id="rice-reach" min="1" max="10" value="5" oninput="updateRicePreview()"
+              class="flex-1" style="border:none;padding:0;box-shadow:none;width:auto;accent-color:#4F46E5"/>
+            <span id="rice-reach-val" class="font-bold text-indigo-600 text-lg w-6 text-center">5</span>
+          </div>
+          <div class="flex justify-between text-xs text-slate-400 mt-1"><span>1 = &lt;5%</span><span>5 = ~40%</span><span>10 = &gt;80%</span></div>
         </div>
-        <div class="flex justify-between text-xs text-gray-400 mt-1"><span>1 = &lt;5%</span><span>5 = ~40%</span><span>10 = &gt;80%</span></div>
-      </div>
-      <div>
-        <label>Impact on Core Metrics</label>
-        <div class="grid grid-cols-4 gap-2 mt-1">
-          <button onclick="setImpact(0.5)" id="imp-05" class="btn-secondary btn-sm text-center">0.5<div class="text-xs font-normal text-gray-400">Minimal</div></button>
-          <button onclick="setImpact(1)"   id="imp-1"  class="btn-secondary btn-sm text-center">1.0<div class="text-xs font-normal text-gray-400">Moderate</div></button>
-          <button onclick="setImpact(2)"   id="imp-2"  class="btn-secondary btn-sm text-center">2.0<div class="text-xs font-normal text-gray-400">Significant</div></button>
-          <button onclick="setImpact(3)"   id="imp-3"  class="btn-secondary btn-sm text-center">3.0<div class="text-xs font-normal text-gray-400">Massive</div></button>
-        </div>
-        <input type="hidden" id="rice-impact" value="1"/>
-      </div>
-      <div>
-        <label>Confidence in Estimates</label>
-        <div class="grid grid-cols-4 gap-2 mt-1">
-          <button onclick="setConf(20)"  id="conf-20"  class="btn-secondary btn-sm text-center">20%<div class="text-xs font-normal text-gray-400">Guess</div></button>
-          <button onclick="setConf(50)"  id="conf-50"  class="btn-secondary btn-sm text-center">50%<div class="text-xs font-normal text-gray-400">Partial</div></button>
-          <button onclick="setConf(80)"  id="conf-80"  class="btn-secondary btn-sm text-center">80%<div class="text-xs font-normal text-gray-400">Strong</div></button>
-          <button onclick="setConf(100)" id="conf-100" class="btn-secondary btn-sm text-center">100%<div class="text-xs font-normal text-gray-400">Hard data</div></button>
-        </div>
-        <input type="hidden" id="rice-confidence" value="80"/>
-      </div>
-      <div>
-        <label>Effort (person-weeks)</label>
-        <div class="grid grid-cols-5 gap-2 mt-1">
-          <button onclick="setEffort(0.5)" id="eff-05" class="btn-secondary btn-sm text-center">0.5<div class="text-xs font-normal text-gray-400">&lt;1 day</div></button>
-          <button onclick="setEffort(1)"   id="eff-1"  class="btn-secondary btn-sm text-center">1<div class="text-xs font-normal text-gray-400">~3 days</div></button>
-          <button onclick="setEffort(2)"   id="eff-2"  class="btn-secondary btn-sm text-center">2<div class="text-xs font-normal text-gray-400">1 week</div></button>
-          <button onclick="setEffort(4)"   id="eff-4"  class="btn-secondary btn-sm text-center">4<div class="text-xs font-normal text-gray-400">2–3 wks</div></button>
-          <button onclick="setEffort(8)"   id="eff-8"  class="btn-secondary btn-sm text-center">8<div class="text-xs font-normal text-gray-400">Full sprint</div></button>
-        </div>
-        <input type="hidden" id="rice-effort" value="2"/>
-      </div>
-      <div class="flex items-center gap-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
-        <input type="checkbox" id="rice-vip" onchange="updateRicePreview()" class="w-4 h-4 accent-amber-500"/>
-        <label for="rice-vip" class="text-sm text-amber-700 font-medium cursor-pointer mb-0">Apply 2× VIP multiplier (enterprise / high-ARR account)</label>
-      </div>
-    </div>
 
-    <div class="mt-5 bg-gray-50 rounded-lg p-4 flex items-center justify-between">
-      <div><div class="text-xs text-gray-500 mb-1">RICE Score</div><div class="text-3xl font-bold" id="rice-preview-score">—</div></div>
-      <div><div class="text-xs text-gray-500 mb-1">Tier</div><div id="rice-preview-tier" class="text-sm font-semibold">—</div></div>
-      <div class="text-xs text-gray-400 text-right"><div id="rice-preview-formula" class="font-mono text-xs">—</div><div class="mt-1">Reach × Impact × Conf ÷ Effort</div></div>
+        <div>
+          <label>Impact on Core Metrics</label>
+          <div class="grid grid-cols-4 gap-2 mt-2">
+            <button onclick="setImpact(0.5)" id="imp-05" class="tog-btn">0.5<div class="text-xs font-normal text-slate-400 mt-0.5">Minimal</div></button>
+            <button onclick="setImpact(1)"   id="imp-1"  class="tog-btn">1.0<div class="text-xs font-normal text-slate-400 mt-0.5">Moderate</div></button>
+            <button onclick="setImpact(2)"   id="imp-2"  class="tog-btn">2.0<div class="text-xs font-normal text-slate-400 mt-0.5">Significant</div></button>
+            <button onclick="setImpact(3)"   id="imp-3"  class="tog-btn">3.0<div class="text-xs font-normal text-slate-400 mt-0.5">Massive</div></button>
+          </div>
+          <input type="hidden" id="rice-impact" value="1"/>
+        </div>
+
+        <div>
+          <label>Confidence in Estimates</label>
+          <div class="grid grid-cols-4 gap-2 mt-2">
+            <button onclick="setConf(20)"  id="conf-20"  class="tog-btn">20%<div class="text-xs font-normal text-slate-400 mt-0.5">Guess</div></button>
+            <button onclick="setConf(50)"  id="conf-50"  class="tog-btn">50%<div class="text-xs font-normal text-slate-400 mt-0.5">Partial</div></button>
+            <button onclick="setConf(80)"  id="conf-80"  class="tog-btn">80%<div class="text-xs font-normal text-slate-400 mt-0.5">Strong</div></button>
+            <button onclick="setConf(100)" id="conf-100" class="tog-btn">100%<div class="text-xs font-normal text-slate-400 mt-0.5">Hard data</div></button>
+          </div>
+          <input type="hidden" id="rice-confidence" value="80"/>
+        </div>
+
+        <div>
+          <label>Effort (person-weeks)</label>
+          <div class="grid grid-cols-5 gap-2 mt-2">
+            <button onclick="setEffort(0.5)" id="eff-05" class="tog-btn">0.5<div class="text-xs font-normal text-slate-400 mt-0.5">&lt;1 day</div></button>
+            <button onclick="setEffort(1)"   id="eff-1"  class="tog-btn">1<div class="text-xs font-normal text-slate-400 mt-0.5">~3 days</div></button>
+            <button onclick="setEffort(2)"   id="eff-2"  class="tog-btn">2<div class="text-xs font-normal text-slate-400 mt-0.5">1 week</div></button>
+            <button onclick="setEffort(4)"   id="eff-4"  class="tog-btn">4<div class="text-xs font-normal text-slate-400 mt-0.5">2–3 wks</div></button>
+            <button onclick="setEffort(8)"   id="eff-8"  class="tog-btn">8<div class="text-xs font-normal text-slate-400 mt-0.5">Sprint</div></button>
+          </div>
+          <input type="hidden" id="rice-effort" value="2"/>
+        </div>
+
+        <div class="flex items-center gap-3 rounded-lg p-3.5" style="background:#FFFBEB;border:1px solid #FDE68A">
+          <input type="checkbox" id="rice-vip" onchange="updateRicePreview()" class="w-4 h-4" style="accent-color:#D97706"/>
+          <label for="rice-vip" class="text-sm text-amber-700 font-medium cursor-pointer mb-0">Apply 2× VIP multiplier (enterprise / high-ARR account)</label>
+        </div>
+      </div>
+
+      <!-- Score preview -->
+      <div class="mt-5 rounded-xl p-4 flex items-center justify-between" style="background:#F8FAFC;border:1px solid #E2E8F0">
+        <div>
+          <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">RICE Score</div>
+          <div class="text-4xl font-bold" id="rice-preview-score">—</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Tier</div>
+          <div id="rice-preview-tier" class="text-sm font-semibold text-slate-600">—</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Formula</div>
+          <div id="rice-preview-formula" class="font-mono text-xs text-slate-600">—</div>
+          <div class="text-xs text-slate-400 mt-0.5">R × I × C ÷ E</div>
+        </div>
+      </div>
     </div>
 
     <input type="hidden" id="rice-modal-id"/>
-    <div class="flex gap-3 mt-5 justify-end">
+    <div class="modal-footer">
       <button onclick="closeModal('modal-rice')" class="btn-secondary">Cancel</button>
       <button onclick="saveRiceScore()" class="btn-primary">Save Score</button>
     </div>
@@ -322,7 +603,6 @@
 </div>
 
 <script>
-// ─── STATE ────────────────────────────────────────────────────────────────────
 const API = '';
 let issues = [];
 let aiAvailable = false;
@@ -332,7 +612,6 @@ let pendingMoscow = null;
 let pendingRiceAI = null;
 let currentRiceIssue = null;
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   const status = await api('GET', '/api/status');
   aiAvailable = status.aiAvailable;
@@ -344,7 +623,6 @@ async function init() {
   await loadIssues();
 }
 
-// ─── API HELPERS ─────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
@@ -357,16 +635,21 @@ async function loadIssues() {
   renderAll();
 }
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
 const SOURCES = { support:'Support', analytics:'Analytics', sales:'Sales', internal:'Internal', cs:'CS Escalation' };
-const SRC_CLS = { support:'bg-blue-100 text-blue-700', analytics:'bg-purple-100 text-purple-700', sales:'bg-green-100 text-green-700', internal:'bg-gray-100 text-gray-600', cs:'bg-red-100 text-red-700' };
+const SRC_CLS = {
+  support:   'bg-blue-50 text-blue-600',
+  analytics: 'bg-purple-50 text-purple-600',
+  sales:     'bg-emerald-50 text-emerald-700',
+  internal:  'bg-slate-100 text-slate-500',
+  cs:        'bg-rose-50 text-rose-600'
+};
 
 function moscowBadge(cls) {
   if (cls === 'must')   return '<span class="badge badge-must">Must Have</span>';
   if (cls === 'should') return '<span class="badge badge-should">Should Have</span>';
   if (cls === 'could')  return '<span class="badge badge-could">Could Have</span>';
   if (cls === 'wont')   return '<span class="badge badge-wont">Won\'t Have</span>';
-  return '<span class="badge" style="background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb">Unclassified</span>';
+  return '<span class="badge" style="background:#F8FAFC;color:#94A3B8;border:1px solid #E2E8F0">Unclassified</span>';
 }
 
 function riceScore(issue) {
@@ -385,9 +668,9 @@ function riceTier(score) {
 
 function tierBadge(score) {
   const t = riceTier(score);
-  if (t === 'escalate') return '<span class="tier-badge tier-escalate">🚨 Escalation</span>';
-  if (t === 'sprint')   return '<span class="tier-badge tier-sprint">✅ Sprint</span>';
-  return '<span class="tier-badge tier-future">🔮 Future</span>';
+  if (t === 'escalate') return '<span class="tier-badge tier-escalate"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M4.5 1L1 8h7L4.5 1z" stroke="#BE123C" stroke-width="1.2" stroke-linejoin="round"/></svg>Escalation</span>';
+  if (t === 'sprint')   return '<span class="tier-badge tier-sprint"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 4.5l1.8 1.8L7 3" stroke="#15803D" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Sprint</span>';
+  return '<span class="tier-badge tier-future">Future</span>';
 }
 
 function riceClass(score) {
@@ -397,25 +680,24 @@ function riceClass(score) {
 }
 
 function srcTag(s) {
-  const cls = SRC_CLS[s] || 'bg-gray-100 text-gray-600';
-  return `<span class="source-tag text-xs px-2 py-0.5 rounded ${cls}">${SOURCES[s]||s}</span>`;
+  const cls = SRC_CLS[s] || 'bg-slate-100 text-slate-500';
+  return `<span class="source-tag ${cls}">${SOURCES[s]||s}</span>`;
 }
 
 function vipBadge(tier) {
-  return tier === 'vip' ? '<span class="badge text-xs" style="background:#fef9c3;color:#92400e;border:1px solid #fde68a">VIP</span>' : '';
+  return tier === 'vip' ? '<span class="badge" style="background:#FEFCE8;color:#854D0E;border:1px solid #FDE68A;font-size:10px">VIP</span>' : '';
 }
 
 function showToast(msg, type = 'default') {
   const t = document.createElement('div');
   t.className = 'toast';
-  if (type === 'ai') t.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
-  if (type === 'error') t.style.background = '#dc2626';
-  t.textContent = msg;
+  if (type === 'ai')    t.style.background = 'linear-gradient(135deg,#6366F1,#8B5CF6)';
+  if (type === 'error') t.style.background = '#DC2626';
+  t.innerHTML = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
 
-// ─── TABS ─────────────────────────────────────────────────────────────────────
 function switchTab(name) {
   ['intake','moscow','rice','backlog','dashboard'].forEach(t => {
     document.getElementById('view-'+t).classList.add('hidden');
@@ -426,7 +708,6 @@ function switchTab(name) {
   renderAll();
 }
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderAll() {
   renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats();
 }
@@ -440,20 +721,25 @@ function updateStats() {
 
 function renderIntake() {
   const el = document.getElementById('intake-list');
-  if (!issues.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">📋</div><div class="font-medium text-gray-600 mb-1">No issues yet</div><div class="text-sm">Click "Add Issue" or "Load Sample Data" to get started</div></div>'; return; }
+  if (!issues.length) {
+    el.innerHTML = `<div class="empty-state"><svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="4" stroke="#94A3B8" stroke-width="2"/><path d="M14 18h20M14 24h14M14 30h10" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg><div class="font-semibold text-slate-600 mb-1">No issues yet</div><div class="text-sm">Click "Add Issue" or "Load Samples" to get started</div></div>`;
+    return;
+  }
   el.innerHTML = issues.map(i => `
     <div class="issue-row">
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap mb-1">
-            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            <span class="font-semibold text-sm text-slate-800">${i.title}</span>
             ${vipBadge(i.tier)} ${srcTag(i.source)}
           </div>
-          ${i.desc ? `<div class="text-xs text-gray-500 mt-1">${i.desc}</div>` : ''}
+          ${i.desc ? `<div class="text-xs text-slate-400 mt-1 leading-relaxed">${i.desc}</div>` : ''}
         </div>
         <div class="flex items-center gap-2 shrink-0">
           ${moscowBadge(i.moscow)}
-          <button onclick="deleteIssue(${i.id})" class="btn-danger btn-sm">✕</button>
+          <button onclick="deleteIssue(${i.id})" class="btn-ghost" style="color:#CBD5E1;padding:4px 7px" title="Remove">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3h9M5 3V2h3v1M5.5 5.5v4M7.5 5.5v4M3 3l.8 8h5.4L10 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </div>
     </div>`).join('');
@@ -461,25 +747,28 @@ function renderIntake() {
 
 function renderMoscow() {
   const el = document.getElementById('moscow-list');
-  if (!issues.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">🏷️</div><div class="font-medium text-gray-600 mb-1">No issues to classify</div><div class="text-sm">Add issues in the Intake tab first</div></div>'; return; }
+  if (!issues.length) {
+    el.innerHTML = `<div class="empty-state"><svg class="empty-icon" viewBox="0 0 48 48" fill="none"><path d="M24 6l4 10h10l-8 6 3 10-9-6-9 6 3-10-8-6h10z" stroke="#94A3B8" stroke-width="2" stroke-linejoin="round"/></svg><div class="font-semibold text-slate-600 mb-1">No issues to classify</div><div class="text-sm">Add issues in the Intake tab first</div></div>`;
+    return;
+  }
   el.innerHTML = issues.map(i => `
     <div class="issue-row" id="moscow-row-${i.id}">
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap mb-1">
-            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            <span class="font-semibold text-sm text-slate-800">${i.title}</span>
             ${vipBadge(i.tier)} ${srcTag(i.source)}
           </div>
-          ${i.desc ? `<div class="text-xs text-gray-500 mt-0.5">${i.desc}</div>` : ''}
+          ${i.desc ? `<div class="text-xs text-slate-400 mt-0.5 leading-relaxed">${i.desc}</div>` : ''}
         </div>
         <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           ${moscowBadge(i.moscow)}
           ${aiAvailable ? `<button onclick="aiClassifyIssue(${i.id})" id="ai-btn-${i.id}" class="btn-ai btn-sm">✦ AI</button>` : ''}
           <div class="flex gap-1">
-            <button onclick="classify(${i.id},'must')"   class="btn-secondary btn-sm ${i.moscow==='must'   ? 'bg-red-50 border-red-300 text-red-600' : ''}">M</button>
-            <button onclick="classify(${i.id},'should')" class="btn-secondary btn-sm ${i.moscow==='should' ? 'bg-amber-50 border-amber-300 text-amber-600' : ''}">S</button>
-            <button onclick="classify(${i.id},'could')"  class="btn-secondary btn-sm ${i.moscow==='could'  ? 'bg-blue-50 border-blue-300 text-blue-600' : ''}">C</button>
-            <button onclick="classify(${i.id},'wont')"   class="btn-secondary btn-sm ${i.moscow==='wont'   ? 'bg-gray-100' : ''}">W</button>
+            <button onclick="classify(${i.id},'must')"   class="cls-btn ${i.moscow==='must'   ? 'active-must'   : ''}">M</button>
+            <button onclick="classify(${i.id},'should')" class="cls-btn ${i.moscow==='should' ? 'active-should' : ''}">S</button>
+            <button onclick="classify(${i.id},'could')"  class="cls-btn ${i.moscow==='could'  ? 'active-could'  : ''}">C</button>
+            <button onclick="classify(${i.id},'wont')"   class="cls-btn ${i.moscow==='wont'   ? 'active-wont'   : ''}">W</button>
           </div>
         </div>
       </div>
@@ -490,7 +779,10 @@ function renderMoscow() {
 function renderRice() {
   const eligible = issues.filter(i => i.moscow === 'must' || i.moscow === 'should');
   const el = document.getElementById('rice-list');
-  if (!eligible.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">🎯</div><div class="font-medium text-gray-600 mb-1">No issues ready for scoring</div><div class="text-sm">Classify issues as MUST or SHOULD HAVE first</div></div>'; return; }
+  if (!eligible.length) {
+    el.innerHTML = `<div class="empty-state"><svg class="empty-icon" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="18" stroke="#94A3B8" stroke-width="2"/><path d="M24 14v10l6 6" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg><div class="font-semibold text-slate-600 mb-1">No issues ready for scoring</div><div class="text-sm">Classify issues as Must or Should Have first</div></div>`;
+    return;
+  }
   el.innerHTML = eligible.map(i => {
     const score = riceScore(i);
     return `
@@ -498,13 +790,15 @@ function renderRice() {
       <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 flex-wrap mb-1">
-            <span class="font-medium text-sm text-gray-900">${i.title}</span>
+            <span class="font-semibold text-sm text-slate-800">${i.title}</span>
             ${vipBadge(i.tier)} ${srcTag(i.source)} ${moscowBadge(i.moscow)}
           </div>
-          ${i.rice ? `<div class="text-xs text-gray-500 mt-1 font-mono">R:${i.rice.reach} × I:${i.rice.impact} × C:${i.rice.confidence}% ÷ E:${i.rice.effort}${i.rice.vip?' ×2(VIP)':''}</div>` : ''}
+          ${i.rice ? `<div class="text-xs text-slate-400 mt-1 font-mono">R:${i.rice.reach} × I:${i.rice.impact} × C:${i.rice.confidence}% ÷ E:${i.rice.effort}${i.rice.vip?' ×2(VIP)':''}</div>` : ''}
         </div>
         <div class="flex items-center gap-3 shrink-0">
-          ${score !== null ? `<div class="text-right"><div class="text-xl font-bold ${riceClass(score)}">${score.toFixed(1)}</div>${tierBadge(score)}</div>` : '<span class="text-xs text-gray-400">Not scored</span>'}
+          ${score !== null
+            ? `<div class="text-right"><div class="text-2xl font-bold ${riceClass(score)}">${score.toFixed(1)}</div><div class="mt-0.5">${tierBadge(score)}</div></div>`
+            : '<span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200">Not scored</span>'}
           <button onclick="openRiceModal(${i.id})" class="btn-primary btn-sm">${score !== null ? 'Rescore' : 'Score →'}</button>
         </div>
       </div>
@@ -522,32 +816,42 @@ function renderBacklog() {
   const alert = document.getElementById('escalation-alert');
   if (escalations.length) {
     alert.classList.remove('hidden');
-    document.getElementById('escalation-count').textContent = `${escalations.length} issue${escalations.length > 1 ? 's' : ''} scored ≥ 40 — assign owner within 24 hours`;
+    document.getElementById('escalation-count').textContent =
+      `${escalations.length} issue${escalations.length > 1 ? 's' : ''} scored ≥ 40 — assign owner within 24 hours`;
   } else { alert.classList.add('hidden'); }
 
   const filtered = backlogFilter === 'all' ? scored : scored.filter(i => riceTier(i.score) === backlogFilter);
   const el = document.getElementById('backlog-list');
-  if (!filtered.length) { el.innerHTML = '<div class="empty-state"><div class="text-4xl mb-3">📊</div><div class="font-medium text-gray-600 mb-1">Backlog is empty</div><div class="text-sm">Score issues in the RICE tab to populate the backlog</div></div>'; return; }
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-state"><svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="8" y="10" width="32" height="28" rx="3" stroke="#94A3B8" stroke-width="2"/><path d="M16 18h16M16 24h12M16 30h8" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg><div class="font-semibold text-slate-600 mb-1">Backlog is empty</div><div class="text-sm">Score issues in the RICE tab to populate the backlog</div></div>`;
+    return;
+  }
 
   el.innerHTML = `
-    <div class="grid grid-cols-12 gap-4 pb-2 mb-1 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-      <div class="col-span-1">#</div><div class="col-span-5">Issue</div><div class="col-span-2">Class</div><div class="col-span-2 text-center">RICE</div><div class="col-span-2">Tier</div>
+    <div class="grid grid-cols-12 gap-4 pb-3 mb-1 border-b border-slate-100">
+      <div class="col-span-1"></div>
+      <div class="col-span-5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Issue</div>
+      <div class="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Classification</div>
+      <div class="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wide text-center">RICE</div>
+      <div class="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Tier</div>
     </div>
     ${filtered.map((i, idx) => `
       <div class="issue-row grid grid-cols-12 gap-4 items-center">
-        <div class="col-span-1 text-sm font-bold text-gray-300">${idx+1}</div>
+        <div class="col-span-1"><div class="rank-num">${idx+1}</div></div>
         <div class="col-span-5">
-          <div class="flex items-center gap-2 flex-wrap"><span class="font-medium text-sm text-gray-900">${i.title}</span>${vipBadge(i.tier)}${srcTag(i.source)}</div>
-          ${i.desc ? `<div class="text-xs text-gray-400 mt-0.5">${i.desc}</div>` : ''}
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-sm text-slate-800">${i.title}</span>
+            ${vipBadge(i.tier)}${srcTag(i.source)}
+          </div>
+          ${i.desc ? `<div class="text-xs text-slate-400 mt-0.5">${i.desc}</div>` : ''}
         </div>
         <div class="col-span-2">${moscowBadge(i.moscow)}</div>
-        <div class="col-span-2 text-center text-xl font-bold ${riceClass(i.score)}">${i.score.toFixed(1)}</div>
+        <div class="col-span-2 text-center text-2xl font-bold ${riceClass(i.score)}">${i.score.toFixed(1)}</div>
         <div class="col-span-2">${tierBadge(i.score)}</div>
       </div>`).join('')}`;
 }
 
 function renderDashboard() {
-  const total = issues.length;
   const classified = issues.filter(i => i.moscow).length;
   const noise = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
   const forwarded = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
@@ -562,28 +866,30 @@ function renderDashboard() {
   document.getElementById('kpi-completion').textContent = (forwarded ? Math.round(scored/forwarded*100) : 0) + '%';
 
   const moscowEl = document.getElementById('moscow-breakdown');
-  const cats = [{key:'must',label:'Must Have',cls:'bg-red-400'},{key:'should',label:'Should Have',cls:'bg-amber-400'},{key:'could',label:'Could Have',cls:'bg-blue-400'},{key:'wont',label:"Won't Have",cls:'bg-gray-300'}];
-  moscowEl.innerHTML = !classified ? '<div class="text-sm text-gray-400">No data yet</div>' : cats.map(c => {
+  const cats = [{key:'must',label:'Must Have',cls:'bg-red-400'},{key:'should',label:'Should Have',cls:'bg-amber-400'},{key:'could',label:'Could Have',cls:'bg-blue-400'},{key:'wont',label:"Won't Have",cls:'bg-slate-300'}];
+  moscowEl.innerHTML = !classified ? '<div class="text-sm text-slate-400">No data yet</div>' : cats.map(c => {
     const count = issues.filter(i => i.moscow === c.key).length;
     const pct = classified ? Math.round(count/classified*100) : 0;
-    return `<div class="flex items-center gap-3 mb-2"><div class="text-xs text-gray-600 w-24">${c.label}</div><div class="flex-1 progress-bar"><div class="progress-fill ${c.cls}" style="width:${pct}%"></div></div><div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div></div>`;
+    return `<div class="flex items-center gap-3 mb-2.5"><div class="text-xs text-slate-500 w-24">${c.label}</div><div class="flex-1 progress-bar"><div class="progress-fill ${c.cls}" style="width:${pct}%"></div></div><div class="text-xs font-semibold text-slate-600 w-6 text-right">${count}</div></div>`;
   }).join('');
 
   const riceEl = document.getElementById('rice-breakdown');
-  const tiers = [{key:'escalate',label:'🚨 Escalation',cls:'bg-red-400'},{key:'sprint',label:'✅ Sprint',cls:'bg-green-400'},{key:'future',label:'🔮 Future',cls:'bg-gray-300'}];
-  riceEl.innerHTML = !scoredIssues.length ? '<div class="text-sm text-gray-400">No data yet</div>' : tiers.map(t => {
+  const tiers = [{key:'escalate',label:'Escalation',cls:'bg-rose-400'},{key:'sprint',label:'Sprint',cls:'bg-emerald-400'},{key:'future',label:'Future',cls:'bg-slate-300'}];
+  riceEl.innerHTML = !scoredIssues.length ? '<div class="text-sm text-slate-400">No data yet</div>' : tiers.map(t => {
     const count = scoredIssues.filter(i => riceTier(i.score) === t.key).length;
     const pct = scoredIssues.length ? Math.round(count/scoredIssues.length*100) : 0;
-    return `<div class="flex items-center gap-3 mb-2"><div class="text-xs text-gray-600 w-24">${t.label}</div><div class="flex-1 progress-bar"><div class="progress-fill ${t.cls}" style="width:${pct}%"></div></div><div class="text-xs font-semibold text-gray-700 w-8 text-right">${count}</div></div>`;
+    return `<div class="flex items-center gap-3 mb-2.5"><div class="text-xs text-slate-500 w-24">${t.label}</div><div class="flex-1 progress-bar"><div class="progress-fill ${t.cls}" style="width:${pct}%"></div></div><div class="text-xs font-semibold text-slate-600 w-6 text-right">${count}</div></div>`;
   }).join('');
 
   const srcEl = document.getElementById('source-breakdown');
   const srcs = ['support','analytics','sales','internal','cs'];
-  const srcItems = srcs.map(s => { const c = issues.filter(i => i.source === s).length; return c ? `<div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-bold text-gray-800">${c}</div><div class="text-xs text-gray-500 mt-1">${SOURCES[s]}</div></div>` : ''; }).filter(Boolean).join('');
-  srcEl.innerHTML = srcItems || '<div class="text-sm text-gray-400">No data yet</div>';
+  const srcItems = srcs.map(s => {
+    const c = issues.filter(i => i.source === s).length;
+    return c ? `<div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100"><div class="text-2xl font-bold text-slate-700">${c}</div><div class="text-xs text-slate-400 mt-1">${SOURCES[s]}</div></div>` : '';
+  }).filter(Boolean).join('');
+  srcEl.innerHTML = srcItems || '<div class="text-sm text-slate-400">No data yet</div>';
 }
 
-// ─── ACTIONS ──────────────────────────────────────────────────────────────────
 function openAddIssue() {
   document.getElementById('ai-classify-result').classList.add('hidden');
   document.getElementById('input-title').value = '';
@@ -686,12 +992,11 @@ function filterBacklog(f) {
   backlogFilter = f;
   ['all','escalate','sprint','future'].forEach(k => {
     const el = document.getElementById('filter-'+k);
-    if (el) el.className = `btn-secondary btn-sm${k === f ? ' bg-gray-100' : ''}`;
+    if (el) el.className = 'filter-btn' + (k === f ? ' active' : '');
   });
   renderBacklog();
 }
 
-// ─── RICE MODAL ───────────────────────────────────────────────────────────────
 function openRiceModal(id) {
   currentRiceIssue = issues.find(i => i.id === id);
   document.getElementById('rice-modal-id').value = id;
@@ -701,7 +1006,6 @@ function openRiceModal(id) {
   riceEffort = currentRiceIssue.rice?.effort || 2;
   document.getElementById('rice-reach').value = currentRiceIssue.rice?.reach || 5;
   document.getElementById('rice-vip').checked = currentRiceIssue.rice?.vip || currentRiceIssue.tier === 'vip';
-
   const suggestBar = document.getElementById('ai-suggest-bar');
   if (aiAvailable) { suggestBar.classList.remove('hidden'); } else { suggestBar.classList.add('hidden'); }
   document.getElementById('ai-rice-reasoning').classList.add('hidden');
@@ -740,15 +1044,15 @@ function setEffort(v) { riceEffort = v; highlightButtons(); updateRicePreview();
 function highlightButtons() {
   [0.5,1,2,3].forEach(v => {
     const el = document.getElementById('imp-'+String(v).replace('.',''));
-    if (el) el.className = `btn-secondary btn-sm text-center${v===riceImpact?' bg-blue-50 border-blue-400 text-blue-600':''}`;
+    if (el) el.className = 'tog-btn' + (v===riceImpact?' selected':'');
   });
   [20,50,80,100].forEach(v => {
     const el = document.getElementById('conf-'+v);
-    if (el) el.className = `btn-secondary btn-sm text-center${v===riceConf?' bg-blue-50 border-blue-400 text-blue-600':''}`;
+    if (el) el.className = 'tog-btn' + (v===riceConf?' selected':'');
   });
   [0.5,1,2,4,8].forEach(v => {
     const el = document.getElementById('eff-'+String(v).replace('.',''));
-    if (el) el.className = `btn-secondary btn-sm text-center${v===riceEffort?' bg-blue-50 border-blue-400 text-blue-600':''}`;
+    if (el) el.className = 'tog-btn' + (v===riceEffort?' selected':'');
   });
 }
 
@@ -761,9 +1065,9 @@ function updateRicePreview() {
   const score = (effReach * riceImpact * (riceConf/100)) / eff;
   const el = document.getElementById('rice-preview-score');
   el.textContent = score.toFixed(1);
-  el.className = 'text-3xl font-bold ' + riceClass(score);
+  el.className = 'text-4xl font-bold ' + riceClass(score);
   const tier = riceTier(score);
-  const labels = { escalate:'🚨 Escalation', sprint:'✅ Sprint', future:'🔮 Future' };
+  const labels = { escalate:'Escalation', sprint:'Sprint', future:'Future' };
   document.getElementById('rice-preview-tier').textContent = tier ? labels[tier] : '—';
   document.getElementById('rice-preview-formula').textContent = `${effReach}${vip?'(VIP)':''} × ${riceImpact} × ${riceConf}% ÷ ${eff}`;
 }
@@ -779,7 +1083,6 @@ async function saveRiceScore() {
   showToast('RICE score saved');
 }
 
-// ─── START ────────────────────────────────────────────────────────────────────
 init();
 </script>
 </body>
