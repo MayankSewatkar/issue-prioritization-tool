@@ -6,99 +6,104 @@
   <title>PriorityOS — AI Issue Triage</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
 
     :root {
-      --primary: #4F46E5;
-      --primary-hover: #4338CA;
-      --primary-light: #EEF2FF;
-      --primary-border: #C7D2FE;
-      --surface: #FFFFFF;
-      --bg: #F8FAFC;
-      --border: #E2E8F0;
-      --text: #0F172A;
-      --text-2: #475569;
-      --text-3: #94A3B8;
+      --primary:        #CC6B48;
+      --primary-hover:  #B85D3C;
+      --primary-light:  #FDF2EE;
+      --primary-border: #F0C4B0;
+      --surface:        #FDFAF6;
+      --surface-2:      #F7F3ED;
+      --bg:             #F2EDE5;
+      --border:         #E5DDD2;
+      --border-2:       #D6CBBD;
+      --text:           #1C1410;
+      --text-2:         #7A6A60;
+      --text-3:         #B0A096;
+      --ai-from:        #7C3AED;
+      --ai-to:          #6D28D9;
     }
 
-    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+    * { font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
     body { background: var(--bg); color: var(--text); }
 
     /* ── CARDS ── */
-    .card { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+    .card { background: var(--surface); border-radius: 14px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 1px 4px rgba(28,20,16,.06); }
 
     /* ── BADGES ── */
-    .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; text-transform: uppercase; letter-spacing: .04em; display: inline-flex; align-items: center; }
-    .badge-must   { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
-    .badge-should { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
-    .badge-could  { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
-    .badge-wont   { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+    .badge { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; text-transform: uppercase; letter-spacing: .05em; display: inline-flex; align-items: center; }
+    .badge-must   { background: #FEF0EE; color: #B83222; border: 1px solid #F5C0B8; }
+    .badge-should { background: #FEF9EC; color: #92600A; border: 1px solid #F0D98A; }
+    .badge-could  { background: #EFF4FF; color: #2D55B8; border: 1px solid #C0CFFA; }
+    .badge-wont   { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
     /* ── TIER BADGES ── */
-    .tier-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; }
-    .tier-escalate { background: #FFF1F2; color: #BE123C; border: 1px solid #FECDD3; }
-    .tier-sprint   { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
-    .tier-future   { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+    .tier-badge { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; }
+    .tier-escalate { background: #FEF0EE; color: #B83222; border: 1px solid #F5C0B8; }
+    .tier-sprint   { background: #EEFAF3; color: #1A7A48; border: 1px solid #AEEAC8; }
+    .tier-future   { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 
     /* ── RICE COLORS ── */
-    .rice-high { color: #15803D; font-weight: 700; }
-    .rice-med  { color: #B45309; font-weight: 700; }
-    .rice-low  { color: #94A3B8; font-weight: 600; }
+    .rice-high { color: #1A7A48; font-weight: 700; }
+    .rice-med  { color: #92600A; font-weight: 700; }
+    .rice-low  { color: var(--text-3); font-weight: 600; }
 
     /* ── SOURCE TAGS ── */
     .source-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
 
     /* ── FORMS ── */
     input, select, textarea {
-      border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px;
-      font-size: 14px; width: 100%; outline: none;
+      border: 1px solid var(--border); border-radius: 10px; padding: 9px 13px;
+      font-size: 14px; width: 100%; outline: none; font-family: 'DM Sans', sans-serif;
       transition: border-color .15s, box-shadow .15s;
       background: var(--surface); color: var(--text);
     }
     input:focus, select:focus, textarea:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+      box-shadow: 0 0 0 3px rgba(204,107,72,.12);
     }
     label { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; display: block; }
 
     /* ── BUTTONS ── */
     .btn-primary {
       background: var(--primary); color: white; padding: 8px 16px;
-      border-radius: 8px; font-weight: 600; font-size: 13.5px;
+      border-radius: 9px; font-weight: 600; font-size: 13.5px;
       cursor: pointer; border: none; transition: background .15s, transform .1s;
-      display: inline-flex; align-items: center; gap: 6px;
+      display: inline-flex; align-items: center; gap: 6px; font-family: 'DM Sans', sans-serif;
     }
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-primary:active { transform: scale(.98); }
-    .btn-primary:disabled { background: #A5B4FC; cursor: not-allowed; }
+    .btn-primary:disabled { background: #E8B8A4; cursor: not-allowed; }
 
     .btn-secondary {
       background: var(--surface); color: var(--text-2); padding: 8px 14px;
-      border-radius: 8px; font-weight: 500; font-size: 13px;
+      border-radius: 9px; font-weight: 500; font-size: 13px;
       cursor: pointer; border: 1px solid var(--border); transition: all .15s;
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; gap: 5px; font-family: 'DM Sans', sans-serif;
     }
-    .btn-secondary:hover { background: #F8FAFC; border-color: #CBD5E1; color: var(--text); }
+    .btn-secondary:hover { background: var(--surface-2); border-color: var(--border-2); color: var(--text); }
 
     .btn-ghost {
       background: transparent; color: var(--text-3); padding: 6px 10px;
-      border-radius: 6px; font-size: 13px; cursor: pointer; border: none; transition: all .15s;
-      display: inline-flex; align-items: center; gap: 4px;
+      border-radius: 7px; font-size: 13px; cursor: pointer; border: none; transition: all .15s;
+      display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Sans', sans-serif;
     }
-    .btn-ghost:hover { background: #F1F5F9; color: var(--text-2); }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--text-2); }
 
     .btn-danger {
-      background: var(--surface); color: #DC2626; border: 1px solid #FECACA;
-      padding: 5px 10px; border-radius: 7px; font-size: 12px; font-weight: 500;
+      background: var(--surface); color: #B83222; border: 1px solid #F5C0B8;
+      padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 500;
       cursor: pointer; transition: all .15s; display: inline-flex; align-items: center;
+      font-family: 'DM Sans', sans-serif;
     }
-    .btn-danger:hover { background: #FEF2F2; }
+    .btn-danger:hover { background: #FEF0EE; }
 
     .btn-ai {
-      background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white;
-      padding: 6px 13px; border-radius: 7px; font-weight: 600; font-size: 12px;
+      background: linear-gradient(135deg, var(--ai-from), var(--ai-to)); color: white;
+      padding: 6px 13px; border-radius: 8px; font-weight: 600; font-size: 12px;
       cursor: pointer; border: none; transition: opacity .2s, transform .1s;
-      display: inline-flex; align-items: center; gap: 5px;
+      display: inline-flex; align-items: center; gap: 5px; font-family: 'DM Sans', sans-serif;
     }
     .btn-ai:hover { opacity: .88; }
     .btn-ai:active { transform: scale(.97); }
@@ -108,57 +113,58 @@
 
     /* ── NAV TABS ── */
     .nav-tab {
-      padding: 6px 13px; border-radius: 7px; font-size: 13.5px; font-weight: 500;
+      padding: 6px 13px; border-radius: 8px; font-size: 13.5px; font-weight: 500;
       cursor: pointer; color: var(--text-2); border: none; background: transparent;
-      transition: all .15s; white-space: nowrap;
+      transition: all .15s; white-space: nowrap; font-family: 'DM Sans', sans-serif;
     }
-    .nav-tab:hover { color: var(--text); background: #F1F5F9; }
+    .nav-tab:hover { color: var(--text); background: var(--surface-2); }
     .nav-tab.tab-active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
 
     /* ── FILTER BUTTONS ── */
     .filter-btn {
-      padding: 6px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 500;
+      padding: 6px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 500;
       cursor: pointer; border: 1px solid var(--border); background: var(--surface);
-      color: var(--text-2); transition: all .15s;
+      color: var(--text-2); transition: all .15s; font-family: 'DM Sans', sans-serif;
     }
-    .filter-btn:hover { border-color: #CBD5E1; }
+    .filter-btn:hover { border-color: var(--border-2); }
     .filter-btn.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary-border); font-weight: 600; }
 
     /* ── MoSCoW CLASSIFY BUTTONS ── */
     .cls-btn {
-      padding: 5px 11px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      padding: 5px 11px; border-radius: 8px; font-size: 12px; font-weight: 600;
       cursor: pointer; border: 1px solid var(--border); background: var(--surface);
-      color: var(--text-2); transition: all .15s;
+      color: var(--text-2); transition: all .15s; font-family: 'DM Sans', sans-serif;
     }
-    .cls-btn:hover { border-color: #94A3B8; }
-    .cls-btn.active-must   { background: #FEF2F2; border-color: #FECACA; color: #B91C1C; }
-    .cls-btn.active-should { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
-    .cls-btn.active-could  { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
-    .cls-btn.active-wont   { background: #F8FAFC; border-color: #E2E8F0; color: #64748B; }
+    .cls-btn:hover { border-color: var(--border-2); }
+    .cls-btn.active-must   { background: #FEF0EE; border-color: #F5C0B8; color: #B83222; }
+    .cls-btn.active-should { background: #FEF9EC; border-color: #F0D98A; color: #92600A; }
+    .cls-btn.active-could  { background: #EFF4FF; border-color: #C0CFFA; color: #2D55B8; }
+    .cls-btn.active-wont   { background: var(--surface-2); border-color: var(--border-2); color: var(--text-2); }
 
     /* ── TOGGLE BUTTONS (RICE modal) ── */
     .tog-btn {
-      padding: 8px 4px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      padding: 8px 4px; border-radius: 9px; font-size: 13px; font-weight: 600;
       cursor: pointer; border: 1px solid var(--border); background: var(--surface);
       color: var(--text-2); transition: all .15s; text-align: center; width: 100%;
+      font-family: 'DM Sans', sans-serif;
     }
     .tog-btn:hover { border-color: var(--primary-border); color: var(--primary); }
     .tog-btn.selected { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
 
     /* ── ISSUE ROWS ── */
-    .issue-row { border-bottom: 1px solid #F1F5F9; padding: 16px 0; transition: background .12s; border-radius: 8px; }
+    .issue-row { border-bottom: 1px solid var(--border); padding: 16px 0; transition: background .12s; border-radius: 10px; }
     .issue-row:last-child { border-bottom: none; }
-    .issue-row:hover { background: #F8FAFC; padding: 16px 12px; margin: 0 -12px; }
+    .issue-row:hover { background: var(--surface-2); padding: 16px 12px; margin: 0 -12px; }
 
     /* ── MODALS ── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(15,23,42,.5);
-      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      position: fixed; inset: 0; background: rgba(28,20,16,.45);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
       z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px;
     }
     .modal {
-      background: var(--surface); border-radius: 16px; width: 100%; max-width: 560px;
-      box-shadow: 0 24px 64px rgba(15,23,42,.18), 0 0 0 1px rgba(15,23,42,.06);
+      background: var(--surface); border-radius: 18px; width: 100%; max-width: 560px;
+      box-shadow: 0 32px 80px rgba(28,20,16,.2), 0 0 0 1px rgba(28,20,16,.07);
       max-height: 92vh; overflow-y: auto;
     }
     .modal-header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; }
@@ -167,41 +173,42 @@
 
     /* ── MISC ── */
     .step-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-    .rank-num { width: 28px; height: 28px; border-radius: 8px; background: #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
-    .progress-bar { height: 6px; border-radius: 3px; background: #E2E8F0; overflow: hidden; }
-    .progress-fill { height: 6px; border-radius: 3px; transition: width .6s ease; }
+    .rank-num { width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+    .progress-bar { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+    .progress-fill { height: 5px; border-radius: 3px; transition: width .6s ease; }
     .animate-slide { animation: slideIn .22s ease; }
     @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     .spinner { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .ai-pill { background: linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.06)); border: 1px solid rgba(99,102,241,.2); border-radius: 10px; padding: 14px 16px; }
-    .ai-badge { background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: .05em; }
-    .ai-reasoning { font-size: 11.5px; color: var(--text-2); background: #F8FAFC; border-radius: 6px; padding: 8px 12px; margin-top: 8px; border-left: 3px solid #A5B4FC; font-style: italic; line-height: 1.55; }
+    .ai-pill { background: linear-gradient(135deg, rgba(124,58,237,.05), rgba(109,40,217,.05)); border: 1px solid rgba(124,58,237,.18); border-radius: 12px; padding: 14px 16px; }
+    .ai-badge { background: linear-gradient(135deg, var(--ai-from), var(--ai-to)); color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: .06em; }
+    .ai-reasoning { font-size: 11.5px; color: var(--text-2); background: var(--surface-2); border-radius: 8px; padding: 8px 12px; margin-top: 8px; border-left: 3px solid #C4B5FD; font-style: italic; line-height: 1.6; }
     .empty-state { text-align: center; padding: 56px 24px; color: var(--text-3); }
-    .empty-icon { width: 44px; height: 44px; margin: 0 auto 14px; opacity: .3; }
-    ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
-    .toast { position: fixed; bottom: 28px; right: 28px; background: #0F172A; color: white; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 999; animation: slideIn .2s ease; box-shadow: 0 8px 32px rgba(15,23,42,.22); display: flex; align-items: center; gap: 8px; }
-    .pipeline-step { border-radius: 10px; padding: 18px; text-align: center; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
+    .empty-icon { width: 44px; height: 44px; margin: 0 auto 14px; opacity: .28; }
+    ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+    .toast { position: fixed; bottom: 28px; right: 28px; background: var(--text); color: var(--surface); padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 500; z-index: 999; animation: slideIn .2s ease; box-shadow: 0 8px 32px rgba(28,20,16,.25); display: flex; align-items: center; gap: 8px; }
+    .pipeline-step { border-radius: 12px; padding: 18px; text-align: center; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(28,20,16,.05); }
+    .mono { font-family: 'DM Mono', monospace; }
   </style>
 </head>
 <body class="min-h-screen">
 
 <!-- ══ HEADER ══ -->
-<header class="bg-white border-b border-slate-200 sticky top-0 z-40" style="box-shadow:0 1px 4px rgba(15,23,42,.07)">
+<header style="background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;box-shadow:0 1px 6px rgba(28,20,16,.07)">
   <div class="max-w-6xl mx-auto px-6">
     <div class="flex items-center justify-between h-14 gap-6">
 
       <!-- Logo -->
       <div class="flex items-center gap-3 flex-shrink-0">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#4F46E5,#7C3AED)">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M2 4h12M2 8h8M2 12h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(145deg,#CC6B48,#B85D3C)">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M2 4h11M2 7.5h7.5M2 11h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
         </div>
         <div>
-          <div class="font-bold text-slate-900 text-sm tracking-tight leading-tight">PriorityOS</div>
-          <div class="text-xs text-slate-400 leading-tight flex items-center gap-1.5">
+          <div class="font-bold text-sm tracking-tight leading-tight" style="color:var(--text)">PriorityOS</div>
+          <div class="text-xs leading-tight flex items-center gap-1.5" style="color:var(--text-3)">
             MoSCoW · RICE Triage
             <span id="ai-status-pill" class="hidden ai-badge">AI</span>
           </div>
@@ -219,9 +226,9 @@
 
       <!-- Actions -->
       <div class="flex items-center gap-2 flex-shrink-0">
-        <span class="text-xs text-slate-400 hidden" id="ai-status-text"></span>
-        <button onclick="seedData()" class="btn-ghost text-xs" style="color:#64748B">Load Samples</button>
-        <button onclick="clearAll()" class="btn-ghost text-xs" style="color:#F87171">Clear All</button>
+        <span class="text-xs hidden" style="color:var(--text-3)" id="ai-status-text"></span>
+        <button onclick="seedData()" class="btn-ghost text-xs">Load Samples</button>
+        <button onclick="clearAll()" class="btn-ghost text-xs" style="color:#C05046">Clear All</button>
         <button onclick="openAddIssue()" class="btn-primary btn-sm">
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           Add Issue
@@ -245,33 +252,33 @@
   <!-- Pipeline stepper -->
   <div class="card mb-5" style="padding:16px 24px">
     <div class="flex items-center gap-2">
-      <div class="flex items-center gap-2"><div class="step-dot bg-indigo-600 text-white text-xs">1</div><span class="text-sm font-semibold text-indigo-600">Intake</span></div>
-      <div class="flex-1 h-px bg-slate-200"></div>
-      <div class="flex items-center gap-2"><div class="step-dot bg-slate-100 text-slate-400 text-xs">2</div><span class="text-sm text-slate-400">MoSCoW Filter</span></div>
-      <div class="flex-1 h-px bg-slate-200"></div>
-      <div class="flex items-center gap-2"><div class="step-dot bg-slate-100 text-slate-400 text-xs">3</div><span class="text-sm text-slate-400">RICE Score</span></div>
-      <div class="flex-1 h-px bg-slate-200"></div>
-      <div class="flex items-center gap-2"><div class="step-dot bg-slate-100 text-slate-400 text-xs">4</div><span class="text-sm text-slate-400">Backlog</span></div>
+      <div class="flex items-center gap-2"><div class="step-dot text-white text-xs" style="background:var(--primary)">1</div><span class="text-sm font-semibold" style="color:var(--primary)">Intake</span></div>
+      <div class="flex-1 h-px" style="background:var(--border)"></div>
+      <div class="flex items-center gap-2"><div class="step-dot text-xs" style="background:var(--surface-2);color:var(--text-3)">2</div><span class="text-sm" style="color:var(--text-3)">MoSCoW Filter</span></div>
+      <div class="flex-1 h-px" style="background:var(--border)"></div>
+      <div class="flex items-center gap-2"><div class="step-dot text-xs" style="background:var(--surface-2);color:var(--text-3)">3</div><span class="text-sm" style="color:var(--text-3)">RICE Score</span></div>
+      <div class="flex-1 h-px" style="background:var(--border)"></div>
+      <div class="flex items-center gap-2"><div class="step-dot text-xs" style="background:var(--surface-2);color:var(--text-3)">4</div><span class="text-sm" style="color:var(--text-3)">Backlog</span></div>
     </div>
   </div>
 
   <!-- Stat cards -->
   <div class="grid grid-cols-4 gap-4 mb-6">
     <div class="stat-card">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Total Issues</div>
-      <div class="text-3xl font-bold text-slate-900" id="stat-total">0</div>
+      <div class="text-xs font-semibold uppercase tracking-wide mb-2" style="color:var(--text-3)">Total Issues</div>
+      <div class="text-3xl font-bold" style="color:var(--text)" id="stat-total">0</div>
     </div>
-    <div class="stat-card" style="border-left:3px solid #FBBF24">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Awaiting Triage</div>
-      <div class="text-3xl font-bold text-amber-500" id="stat-unclassified">0</div>
+    <div class="stat-card" style="border-left:3px solid #D4A017">
+      <div class="text-xs font-semibold uppercase tracking-wide mb-2" style="color:var(--text-3)">Awaiting Triage</div>
+      <div class="text-3xl font-bold" style="color:#92600A" id="stat-unclassified">0</div>
     </div>
-    <div class="stat-card" style="border-left:3px solid #34D399">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Forwarded to RICE</div>
-      <div class="text-3xl font-bold text-emerald-600" id="stat-forwarded">0</div>
+    <div class="stat-card" style="border-left:3px solid #3BAA6A">
+      <div class="text-xs font-semibold uppercase tracking-wide mb-2" style="color:var(--text-3)">Forwarded to RICE</div>
+      <div class="text-3xl font-bold" style="color:#1A7A48" id="stat-forwarded">0</div>
     </div>
-    <div class="stat-card" style="border-left:3px solid #E2E8F0">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Eliminated</div>
-      <div class="text-3xl font-bold text-slate-400" id="stat-eliminated">0</div>
+    <div class="stat-card" style="border-left:3px solid var(--border-2)">
+      <div class="text-xs font-semibold uppercase tracking-wide mb-2" style="color:var(--text-3)">Eliminated</div>
+      <div class="text-3xl font-bold" style="color:var(--text-3)" id="stat-eliminated">0</div>
     </div>
   </div>
 
@@ -291,10 +298,10 @@
     <p class="text-sm text-slate-500 mt-1">Stage 1: Classify each issue. Only Must Have and top Should Have advance to RICE.</p>
   </div>
   <div class="grid grid-cols-4 gap-3 mb-6">
-    <div class="card" style="padding:16px;border-left:3px solid #EF4444"><span class="badge badge-must mb-2">Must Have</span><div class="text-xs text-slate-500 leading-snug">Revenue-critical, SLA breach, core function broken</div></div>
-    <div class="card" style="padding:16px;border-left:3px solid #F59E0B"><span class="badge badge-should mb-2">Should Have</span><div class="text-xs text-slate-500 leading-snug">Important, workaround exists, affects &gt;10% users</div></div>
-    <div class="card" style="padding:16px;border-left:3px solid #3B82F6"><span class="badge badge-could mb-2">Could Have</span><div class="text-xs text-slate-500 leading-snug">Nice to have, low urgency, &lt;5% impact</div></div>
-    <div class="card" style="padding:16px;border-left:3px solid #CBD5E1"><span class="badge badge-wont mb-2">Won't Have</span><div class="text-xs text-slate-500 leading-snug">Noise, out of scope, duplicate, feature creep</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #D45040"><span class="badge badge-must mb-2">Must Have</span><div class="text-xs leading-snug" style="color:var(--text-2)">Revenue-critical, SLA breach, core function broken</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #C49020"><span class="badge badge-should mb-2">Should Have</span><div class="text-xs leading-snug" style="color:var(--text-2)">Important, workaround exists, affects &gt;10% users</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid #4070D8"><span class="badge badge-could mb-2">Could Have</span><div class="text-xs leading-snug" style="color:var(--text-2)">Nice to have, low urgency, &lt;5% impact</div></div>
+    <div class="card" style="padding:16px;border-left:3px solid var(--border-2)"><span class="badge badge-wont mb-2">Won't Have</span><div class="text-xs leading-snug" style="color:var(--text-2)">Noise, out of scope, duplicate, feature creep</div></div>
   </div>
   <div class="card" id="moscow-list">
     <div class="empty-state">
@@ -312,10 +319,10 @@
     <p class="text-sm text-slate-500 mt-1">Stage 2: Score forwarded issues. RICE = (Reach × Impact × Confidence) ÷ Effort</p>
   </div>
   <div class="grid grid-cols-4 gap-3 mb-6">
-    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Reach</div><div class="text-sm font-medium text-slate-700 mb-1.5">Accounts affected per sprint</div><div class="text-xs text-indigo-600 font-semibold">1–10 scale</div></div>
-    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Impact</div><div class="text-sm font-medium text-slate-700 mb-1.5">Effect on ROAS, conversion, retention</div><div class="text-xs text-indigo-600 font-semibold">0.5 / 1 / 2 / 3</div></div>
-    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Confidence</div><div class="text-sm font-medium text-slate-700 mb-1.5">Certainty in estimates</div><div class="text-xs text-indigo-600 font-semibold">20% / 50% / 80% / 100%</div></div>
-    <div class="card" style="padding:16px"><div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Effort</div><div class="text-sm font-medium text-slate-700 mb-1.5">Engineering person-weeks</div><div class="text-xs text-indigo-600 font-semibold">0.5 / 1 / 2 / 4 / 8</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Reach</div><div class="text-sm font-medium mb-1.5" style="color:var(--text)">Accounts affected per sprint</div><div class="text-xs font-semibold" style="color:var(--primary)">1–10 scale</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Impact</div><div class="text-sm font-medium mb-1.5" style="color:var(--text)">Effect on ROAS, conversion, retention</div><div class="text-xs font-semibold" style="color:var(--primary)">0.5 / 1 / 2 / 3</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Confidence</div><div class="text-sm font-medium mb-1.5" style="color:var(--text)">Certainty in estimates</div><div class="text-xs font-semibold" style="color:var(--primary)">20% / 50% / 80% / 100%</div></div>
+    <div class="card" style="padding:16px"><div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Effort</div><div class="text-sm font-medium mb-1.5" style="color:var(--text)">Engineering person-weeks</div><div class="text-xs font-semibold" style="color:var(--primary)">0.5 / 1 / 2 / 4 / 8</div></div>
   </div>
   <div class="card" id="rice-list">
     <div class="empty-state">
@@ -341,7 +348,7 @@
     </div>
   </div>
 
-  <div id="escalation-alert" class="hidden mb-4 rounded-xl p-4 flex items-start gap-3" style="background:#FFF1F2;border:1px solid #FECDD3">
+  <div id="escalation-alert" class="hidden mb-4 rounded-xl p-4 flex items-start gap-3" style="background:#FEF0EE;border:1px solid #F5C0B8">
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="margin-top:1px;flex-shrink:0"><path d="M9 2L1 16h16L9 2z" stroke="#BE123C" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 8v3" stroke="#BE123C" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="13.5" r=".75" fill="#BE123C"/></svg>
     <div>
       <div class="font-semibold text-rose-700 text-sm">Escalation Items Require Immediate Attention</div>
@@ -367,25 +374,25 @@
 
   <div class="grid grid-cols-4 gap-4 mb-6">
     <div class="stat-card">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Noise Eliminated</div>
-      <div class="text-3xl font-bold text-emerald-600 mb-1" id="kpi-noise">—</div>
-      <div class="text-xs text-slate-400 mb-2">Target: 50–80%</div>
-      <div class="progress-bar"><div class="progress-fill bg-emerald-400" id="kpi-noise-bar" style="width:0%"></div></div>
+      <div class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--text-3)">Noise Eliminated</div>
+      <div class="text-3xl font-bold mb-1" style="color:#1A7A48" id="kpi-noise">—</div>
+      <div class="text-xs mb-2" style="color:var(--text-3)">Target: 50–80%</div>
+      <div class="progress-bar"><div class="progress-fill" style="background:#3BAA6A;width:0%" id="kpi-noise-bar"></div></div>
     </div>
     <div class="stat-card">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Escalation Items</div>
-      <div class="text-3xl font-bold text-rose-600 mb-1" id="kpi-escalation">0</div>
-      <div class="text-xs text-slate-400">Target: &lt;5 active</div>
+      <div class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--text-3)">Escalation Items</div>
+      <div class="text-3xl font-bold mb-1" style="color:#B83222" id="kpi-escalation">0</div>
+      <div class="text-xs" style="color:var(--text-3)">Target: &lt;5 active</div>
     </div>
     <div class="stat-card">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Sprint Backlog</div>
-      <div class="text-3xl font-bold text-indigo-600 mb-1" id="kpi-sprint">0</div>
-      <div class="text-xs text-slate-400">RICE score 20–39</div>
+      <div class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--text-3)">Sprint Backlog</div>
+      <div class="text-3xl font-bold mb-1" style="color:var(--primary)" id="kpi-sprint">0</div>
+      <div class="text-xs" style="color:var(--text-3)">RICE score 20–39</div>
     </div>
     <div class="stat-card">
-      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Pipeline Completion</div>
-      <div class="text-3xl font-bold text-slate-700 mb-1" id="kpi-completion">0%</div>
-      <div class="text-xs text-slate-400">Issues fully scored</div>
+      <div class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--text-3)">Pipeline Completion</div>
+      <div class="text-3xl font-bold mb-1" style="color:var(--text)" id="kpi-completion">0%</div>
+      <div class="text-xs" style="color:var(--text-3)">Issues fully scored</div>
     </div>
   </div>
 
@@ -408,33 +415,33 @@
   <div class="card">
     <div class="text-sm font-semibold text-slate-700 mb-4">Triage Pipeline</div>
     <div class="grid grid-cols-4 gap-3">
-      <div class="pipeline-step bg-slate-50">
-        <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
-          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="3" y="3" width="11" height="11" rx="2" stroke="#64748B" stroke-width="1.4"/><path d="M6 7h5M6 10h3.5" stroke="#64748B" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <div class="pipeline-step" style="background:var(--surface-2)">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-3" style="background:var(--surface);border:1px solid var(--border);box-shadow:0 1px 3px rgba(28,20,16,.07)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="3" y="3" width="11" height="11" rx="2" stroke="#7A6A60" stroke-width="1.4"/><path d="M6 7h5M6 10h3.5" stroke="#7A6A60" stroke-width="1.4" stroke-linecap="round"/></svg>
         </div>
-        <div class="text-xs font-semibold text-slate-700 mb-1">Intake</div>
-        <div class="text-xs text-slate-500 leading-snug">Issues from support, analytics, sales, internal</div>
+        <div class="text-xs font-semibold mb-1" style="color:var(--text)">Intake</div>
+        <div class="text-xs leading-snug" style="color:var(--text-2)">Issues from support, analytics, sales, internal</div>
       </div>
-      <div class="pipeline-step bg-amber-50">
-        <div class="w-9 h-9 rounded-lg bg-white border border-amber-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
-          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 2l2 5h5L11.5 10l2 5-5-3-5 3 2-5-4-3h5z" stroke="#D97706" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      <div class="pipeline-step" style="background:#FEF9EC">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-3" style="background:var(--surface);border:1px solid #F0D98A;box-shadow:0 1px 3px rgba(28,20,16,.07)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 2l2 5h5L11.5 10l2 5-5-3-5 3 2-5-4-3h5z" stroke="#92600A" stroke-width="1.4" stroke-linejoin="round"/></svg>
         </div>
-        <div class="text-xs font-semibold text-amber-700 mb-1">MoSCoW Filter</div>
-        <div class="text-xs text-slate-500 leading-snug">Removes 50–80% noise. Only Must + Should advance</div>
+        <div class="text-xs font-semibold mb-1" style="color:#92600A">MoSCoW Filter</div>
+        <div class="text-xs leading-snug" style="color:var(--text-2)">Removes 50–80% noise. Only Must + Should advance</div>
       </div>
-      <div class="pipeline-step bg-indigo-50">
-        <div class="w-9 h-9 rounded-lg bg-white border border-indigo-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
-          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="#4F46E5" stroke-width="1.4"/><path d="M8.5 5v3.5l2.5 2.5" stroke="#4F46E5" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <div class="pipeline-step" style="background:var(--primary-light)">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-3" style="background:var(--surface);border:1px solid var(--primary-border);box-shadow:0 1px 3px rgba(28,20,16,.07)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="6" stroke="#CC6B48" stroke-width="1.4"/><path d="M8.5 5v3.5l2.5 2.5" stroke="#CC6B48" stroke-width="1.4" stroke-linecap="round"/></svg>
         </div>
-        <div class="text-xs font-semibold text-indigo-700 mb-1">RICE Score</div>
-        <div class="text-xs text-slate-500 leading-snug">Score on Reach, Impact, Confidence, Effort</div>
+        <div class="text-xs font-semibold mb-1" style="color:var(--primary)">RICE Score</div>
+        <div class="text-xs leading-snug" style="color:var(--text-2)">Score on Reach, Impact, Confidence, Effort</div>
       </div>
-      <div class="pipeline-step bg-emerald-50">
-        <div class="w-9 h-9 rounded-lg bg-white border border-emerald-200 flex items-center justify-center mx-auto mb-3" style="box-shadow:0 1px 3px rgba(15,23,42,.08)">
-          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="3" y="3" width="11" height="11" rx="2" stroke="#15803D" stroke-width="1.4"/><path d="M5.5 8.5l2 2 4-4" stroke="#15803D" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="pipeline-step" style="background:#EEFAF3">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-3" style="background:var(--surface);border:1px solid #AEEAC8;box-shadow:0 1px 3px rgba(28,20,16,.07)">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="3" y="3" width="11" height="11" rx="2" stroke="#1A7A48" stroke-width="1.4"/><path d="M5.5 8.5l2 2 4-4" stroke="#1A7A48" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="text-xs font-semibold text-emerald-700 mb-1">Backlog</div>
-        <div class="text-xs text-slate-500 leading-snug">Ranked: Escalation → Sprint → Future</div>
+        <div class="text-xs font-semibold mb-1" style="color:#1A7A48">Backlog</div>
+        <div class="text-xs leading-snug" style="color:var(--text-2)">Ranked: Escalation → Sprint → Future</div>
       </div>
     </div>
   </div>
@@ -530,8 +537,8 @@
           <label>Reach — accounts affected per sprint</label>
           <div class="flex items-center gap-4 mt-2">
             <input type="range" id="rice-reach" min="1" max="10" value="5" oninput="updateRicePreview()"
-              class="flex-1" style="border:none;padding:0;box-shadow:none;width:auto;accent-color:#4F46E5"/>
-            <span id="rice-reach-val" class="font-bold text-indigo-600 text-lg w-6 text-center">5</span>
+              class="flex-1" style="border:none;padding:0;box-shadow:none;width:auto;accent-color:#CC6B48"/>
+            <span id="rice-reach-val" class="font-bold text-lg w-6 text-center" style="color:var(--primary)">5</span>
           </div>
           <div class="flex justify-between text-xs text-slate-400 mt-1"><span>1 = &lt;5%</span><span>5 = ~40%</span><span>10 = &gt;80%</span></div>
         </div>
@@ -577,7 +584,7 @@
       </div>
 
       <!-- Score preview -->
-      <div class="mt-5 rounded-xl p-4 flex items-center justify-between" style="background:#F8FAFC;border:1px solid #E2E8F0">
+      <div class="mt-5 rounded-xl p-4 flex items-center justify-between" style="background:var(--surface-2);border:1px solid var(--border)">
         <div>
           <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">RICE Score</div>
           <div class="text-4xl font-bold" id="rice-preview-score">—</div>
@@ -637,11 +644,11 @@ async function loadIssues() {
 
 const SOURCES = { support:'Support', analytics:'Analytics', sales:'Sales', internal:'Internal', cs:'CS Escalation' };
 const SRC_CLS = {
-  support:   'bg-blue-50 text-blue-600',
-  analytics: 'bg-purple-50 text-purple-600',
-  sales:     'bg-emerald-50 text-emerald-700',
-  internal:  'bg-slate-100 text-slate-500',
-  cs:        'bg-rose-50 text-rose-600'
+  support:   'style="background:#EEF3FE;color:#3A5FBE;border:1px solid #C8D5F8"',
+  analytics: 'style="background:#F3EEFE;color:#6B38C0;border:1px solid #DABFF8"',
+  sales:     'style="background:#EEFAF3;color:#1A7A48;border:1px solid #AEEAC8"',
+  internal:  'style="background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)"',
+  cs:        'style="background:#FEF0EE;color:#B83222;border:1px solid #F5C0B8"'
 };
 
 function moscowBadge(cls) {
@@ -680,18 +687,18 @@ function riceClass(score) {
 }
 
 function srcTag(s) {
-  const cls = SRC_CLS[s] || 'bg-slate-100 text-slate-500';
-  return `<span class="source-tag ${cls}">${SOURCES[s]||s}</span>`;
+  const sty = SRC_CLS[s] || 'style="background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)"';
+  return `<span class="source-tag" ${sty}>${SOURCES[s]||s}</span>`;
 }
 
 function vipBadge(tier) {
-  return tier === 'vip' ? '<span class="badge" style="background:#FEFCE8;color:#854D0E;border:1px solid #FDE68A;font-size:10px">VIP</span>' : '';
+  return tier === 'vip' ? '<span class="badge" style="background:#FEF9EC;color:#92600A;border:1px solid #F0D98A;font-size:10px">VIP</span>' : '';
 }
 
 function showToast(msg, type = 'default') {
   const t = document.createElement('div');
   t.className = 'toast';
-  if (type === 'ai')    t.style.background = 'linear-gradient(135deg,#6366F1,#8B5CF6)';
+  if (type === 'ai')    t.style.background = 'linear-gradient(135deg,#7C3AED,#6D28D9)';
   if (type === 'error') t.style.background = '#DC2626';
   t.innerHTML = msg;
   document.body.appendChild(t);
@@ -798,7 +805,7 @@ function renderRice() {
         <div class="flex items-center gap-3 shrink-0">
           ${score !== null
             ? `<div class="text-right"><div class="text-2xl font-bold ${riceClass(score)}">${score.toFixed(1)}</div><div class="mt-0.5">${tierBadge(score)}</div></div>`
-            : '<span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-200">Not scored</span>'}
+            : `<span class="text-xs px-2 py-1 rounded" style="color:var(--text-3);background:var(--surface-2);border:1px solid var(--border)">Not scored</span>`}
           <button onclick="openRiceModal(${i.id})" class="btn-primary btn-sm">${score !== null ? 'Rescore' : 'Score →'}</button>
         </div>
       </div>
