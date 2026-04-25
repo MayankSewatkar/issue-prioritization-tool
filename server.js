@@ -55,6 +55,9 @@ db.exec(`
   )
 `);
 
+// Add roadmap_column to existing issues table (safe to run repeatedly)
+try { db.exec(`ALTER TABLE issues ADD COLUMN roadmap_column TEXT DEFAULT NULL`); } catch {}
+
 // ─── ANTHROPIC CLIENT ────────────────────────────────────────────────────────
 const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
 const anthropic = hasApiKey ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
@@ -119,9 +122,19 @@ function toIssue(row) {
       effort: row.rice_effort,
       vip: !!row.rice_vip
     } : null,
+    roadmapColumn: row.roadmap_column || null,
     createdAt: row.created_at
   };
 }
+
+// ─── JIRA CONFIG ─────────────────────────────────────────────────────────────
+const jira = {
+  baseUrl:    (process.env.JIRA_BASE_URL    || '').replace(/\/$/, ''),
+  email:      process.env.JIRA_EMAIL        || '',
+  token:      process.env.JIRA_API_TOKEN    || '',
+  projectKey: process.env.JIRA_PROJECT_KEY  || '',
+};
+const hasJira = !!(jira.baseUrl && jira.email && jira.token && jira.projectKey);
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
@@ -151,9 +164,12 @@ app.patch('/api/issues/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM issues WHERE id = ?').get(id);
   if (!row) return res.status(404).json({ error: 'Issue not found' });
 
-  const { moscow, rice } = req.body;
+  const { moscow, rice, roadmap_column } = req.body;
   if (moscow !== undefined) {
     db.prepare('UPDATE issues SET moscow = ? WHERE id = ?').run(moscow, id);
+  }
+  if (roadmap_column !== undefined) {
+    db.prepare('UPDATE issues SET roadmap_column = ? WHERE id = ?').run(roadmap_column, id);
   }
   if (rice !== undefined) {
     if (rice === null) {
@@ -269,7 +285,81 @@ app.post('/api/seed', (req, res) => {
 
 // GET /api/status
 app.get('/api/status', (req, res) => {
-  res.json({ ok: true, aiAvailable: hasApiKey });
+  res.json({ ok: true, aiAvailable: hasApiKey, jiraAvailable: hasJira, jiraProject: jira.projectKey });
+});
+
+// ─── JIRA EXPORT ─────────────────────────────────────────────────────────────
+
+app.post('/api/export/jira', async (req, res) => {
+  if (!hasJira) {
+    return res.status(400).json({
+      error: 'JIRA not configured',
+      setup: 'Add JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN, JIRA_PROJECT_KEY to your .env file'
+    });
+  }
+
+  const { issueIds } = req.body;
+  const rows = issueIds?.length
+    ? db.prepare(`SELECT * FROM issues WHERE id IN (${issueIds.map(() => '?').join(',')})`).all(...issueIds)
+    : db.prepare(`SELECT * FROM issues WHERE moscow IN ('must','should') ORDER BY created_at DESC`).all();
+
+  if (!rows.length) return res.status(400).json({ error: 'No issues to export' });
+
+  const auth = Buffer.from(`${jira.email}:${jira.token}`).toString('base64');
+  const results = [];
+
+  for (const row of rows) {
+    const reach = row.rice_vip ? (row.rice_reach || 0) * 2 : (row.rice_reach || 0);
+    const score = row.rice_reach !== null
+      ? ((reach * row.rice_impact * (row.rice_confidence / 100)) / row.rice_effort).toFixed(1)
+      : null;
+
+    const priority = row.moscow === 'must' ? 'High' : row.moscow === 'should' ? 'Medium' : 'Low';
+    const issueType = row.moscow === 'must' ? 'Bug' : 'Story';
+
+    const descLines = [
+      row.desc || '',
+      '',
+      `*PriorityOS Data*`,
+      `Source: ${row.source} | Tier: ${row.tier} | MoSCoW: ${row.moscow?.toUpperCase()}`,
+      score ? `RICE Score: ${score}` : '',
+    ].filter(l => l !== undefined);
+
+    const body = {
+      fields: {
+        project:     { key: jira.projectKey },
+        summary:     row.title,
+        description: {
+          type: 'doc', version: 1,
+          content: descLines.map(line => ({
+            type: 'paragraph',
+            content: [{ type: 'text', text: line }]
+          }))
+        },
+        issuetype: { name: issueType },
+        priority:  { name: priority },
+        labels:    ['priorityos', row.source, ...(row.tier === 'vip' ? ['vip'] : [])]
+      }
+    };
+
+    try {
+      const r = await fetch(`${jira.baseUrl}/rest/api/3/issue`, {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (r.ok) {
+        results.push({ issueId: row.id, jiraKey: data.key, jiraUrl: `${jira.baseUrl}/browse/${data.key}`, ok: true });
+      } else {
+        results.push({ issueId: row.id, ok: false, error: JSON.stringify(data.errors || data.errorMessages) });
+      }
+    } catch (e) {
+      results.push({ issueId: row.id, ok: false, error: e.message });
+    }
+  }
+
+  res.json({ results, project: jira.projectKey, baseUrl: jira.baseUrl });
 });
 
 // ─── THEMES ──────────────────────────────────────────────────────────────────

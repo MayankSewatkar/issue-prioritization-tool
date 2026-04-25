@@ -219,6 +219,24 @@
     .sol-card:last-child { margin-bottom: 0; }
     .quadrant-section { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--surface); }
     .quadrant-section:empty { display: none; }
+
+    /* ── ROADMAP CARDS ── */
+    .roadmap-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; transition: box-shadow .15s;
+    }
+    .roadmap-card:hover { box-shadow: 0 3px 12px rgba(28,20,16,.1); border-color: var(--border-2); }
+    .roadmap-col-move {
+      font-size: 11.5px; padding: 3px 8px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--surface-2); color: var(--text-2); cursor: pointer; outline: none;
+      font-family: 'DM Sans', sans-serif; width: auto;
+    }
+    .roadmap-col-move:hover { border-color: var(--primary-border); }
+
+    /* ── JIRA RESULT ROWS ── */
+    .jira-row-ok   { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .jira-row-ok:last-child { border-bottom: none; }
+    .jira-row-fail { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -252,6 +270,7 @@
         <button onclick="switchTab('backlog')"   id="tab-backlog"   class="nav-tab">Backlog</button>
         <button onclick="switchTab('themes')"    id="tab-themes"    class="nav-tab">Themes</button>
         <button onclick="switchTab('strategy')"  id="tab-strategy"  class="nav-tab">Strategy</button>
+        <button onclick="switchTab('roadmap')"   id="tab-roadmap"   class="nav-tab">Roadmap</button>
         <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab">Dashboard</button>
       </nav>
 
@@ -259,6 +278,7 @@
       <div class="flex items-center gap-2 flex-shrink-0">
         <span class="text-xs hidden" style="color:var(--text-3)" id="ai-status-text"></span>
         <button onclick="seedData()" class="btn-ghost text-xs">Load Samples</button>
+        <button onclick="openJiraModal()" id="btn-jira-header" class="btn-ghost text-xs hidden" style="color:#2D55B8">⬆ JIRA</button>
         <button onclick="clearAll()" class="btn-ghost text-xs" style="color:#C05046">Clear All</button>
         <button onclick="openAddIssue()" class="btn-primary btn-sm">
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -502,6 +522,71 @@
     <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="36" height="36" rx="4" stroke="#94A3B8" stroke-width="2"/><path d="M6 24h36M24 6v36" stroke="#94A3B8" stroke-width="2" stroke-linecap="round"/></svg>
     <div class="font-semibold mb-1" style="color:var(--text-2)">No theme selected</div>
     <div class="text-sm" style="color:var(--text-3)">Generate themes first, then select one to build its solution matrix</div>
+  </div>
+</div>
+
+<!-- ══ ROADMAP ══ -->
+<div id="view-roadmap" class="animate-slide hidden">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:var(--text)">Now / Next / Later</h1>
+      <p class="text-sm mt-1" style="color:var(--text-2)">Auto-populated from RICE tiers. Drag items between columns or use the column selector on each card.</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="openJiraModal()" id="btn-jira-roadmap" class="hidden btn-secondary btn-sm" style="color:#2D55B8;border-color:#C0CFFA">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2" stroke="#2D55B8" stroke-width="1.3"/><path d="M4 6.5h5M6.5 4v5" stroke="#2D55B8" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Export to JIRA
+      </button>
+    </div>
+  </div>
+
+  <!-- Columns -->
+  <div class="grid grid-cols-3 gap-4" id="roadmap-columns">
+    <!-- Now -->
+    <div>
+      <div class="flex items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #3BAA6A">
+        <div class="w-2 h-2 rounded-full" style="background:#3BAA6A"></div>
+        <span class="text-sm font-bold" style="color:#1A7A48">Now</span>
+        <span class="text-xs ml-auto" style="color:var(--text-3)">This sprint</span>
+        <span class="badge" style="background:#EEFAF3;color:#1A7A48;border:1px solid #AEEAC8" id="count-now">0</span>
+      </div>
+      <div class="space-y-2" id="col-now"></div>
+    </div>
+    <!-- Next -->
+    <div>
+      <div class="flex items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--primary)">
+        <div class="w-2 h-2 rounded-full" style="background:var(--primary)"></div>
+        <span class="text-sm font-bold" style="color:var(--primary)">Next</span>
+        <span class="text-xs ml-auto" style="color:var(--text-3)">Next quarter</span>
+        <span class="badge" style="background:var(--primary-light);color:var(--primary);border:1px solid var(--primary-border)" id="count-next">0</span>
+      </div>
+      <div class="space-y-2" id="col-next"></div>
+    </div>
+    <!-- Later -->
+    <div>
+      <div class="flex items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--border-2)">
+        <div class="w-2 h-2 rounded-full" style="background:var(--border-2)"></div>
+        <span class="text-sm font-bold" style="color:var(--text-2)">Later</span>
+        <span class="text-xs ml-auto" style="color:var(--text-3)">Future</span>
+        <span class="badge" style="background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)" id="count-later">0</span>
+      </div>
+      <div class="space-y-2" id="col-later"></div>
+    </div>
+  </div>
+
+  <!-- Unplanned -->
+  <div id="roadmap-unplanned-wrap" class="hidden mt-6">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-sm font-semibold" style="color:var(--text-3)">Unplanned</span>
+      <span class="text-xs" style="color:var(--text-3)">— scored issues not yet assigned to a column</span>
+    </div>
+    <div class="grid grid-cols-3 gap-2" id="col-unplanned"></div>
+  </div>
+
+  <div id="roadmap-empty" class="empty-state hidden">
+    <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="12" height="32" rx="2" stroke="#94A3B8" stroke-width="2"/><rect x="18" y="8" width="12" height="32" rx="2" stroke="#94A3B8" stroke-width="2"/><rect x="32" y="8" width="12" height="32" rx="2" stroke="#94A3B8" stroke-width="2"/></svg>
+    <div class="font-semibold mb-1" style="color:var(--text-2)">No scored issues yet</div>
+    <div class="text-sm" style="color:var(--text-3)">Score issues in the RICE tab to populate the roadmap</div>
   </div>
 </div>
 
@@ -749,6 +834,60 @@
   </div>
 </div>
 
+<!-- ══ MODAL: JIRA EXPORT ══ -->
+<div id="modal-jira" class="modal-overlay hidden">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <h3 class="text-base font-bold" style="color:var(--text)">Export to JIRA</h3>
+        <p class="text-xs mt-0.5" style="color:var(--text-3)">Push Must Have &amp; Should Have issues as JIRA stories / bugs</p>
+      </div>
+      <button onclick="closeModal('modal-jira')" class="btn-ghost" style="padding:5px 8px;font-size:20px;line-height:1;color:#94A3B8">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Project info banner -->
+      <div id="jira-project-banner" class="hidden mb-4 rounded-xl p-3.5 flex items-center gap-3" style="background:#EFF4FF;border:1px solid #C0CFFA">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="3" stroke="#2D55B8" stroke-width="1.4"/><path d="M5 9l3 3 5-5" stroke="#2D55B8" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div>
+          <div class="text-xs font-semibold" style="color:#2D55B8">JIRA Connected — Project <span id="jira-project-key" class="font-mono"></span></div>
+          <div class="text-xs mt-0.5" style="color:#4070D8">Issues will be created in your configured JIRA project</div>
+        </div>
+      </div>
+
+      <!-- Export form -->
+      <div id="jira-export-form">
+        <div class="mb-4 p-4 rounded-xl" style="background:var(--surface-2);border:1px solid var(--border)">
+          <div class="text-sm font-semibold mb-1" style="color:var(--text)">What will be exported</div>
+          <div class="text-xs leading-relaxed" style="color:var(--text-2)">
+            All <strong>Must Have</strong> issues → JIRA Bug with High priority<br>
+            All <strong>Should Have</strong> issues → JIRA Story with Medium priority<br>
+            Each issue gets a <code class="mono text-xs px-1 py-0.5 rounded" style="background:var(--border);color:var(--text)">priorityos</code> label plus source and tier labels.
+          </div>
+          <div class="mt-3 flex items-center gap-2">
+            <span class="text-2xl font-bold" style="color:var(--primary)" id="jira-issue-count">0</span>
+            <span class="text-sm" style="color:var(--text-2)">issues ready to export</span>
+          </div>
+        </div>
+        <div class="text-xs p-3 rounded-lg" style="background:#FFFBEB;border:1px solid #FDE68A;color:#92600A">
+          ⚠ Duplicate check is not performed — running export twice will create duplicate JIRA tickets.
+        </div>
+      </div>
+
+      <!-- Results panel -->
+      <div id="jira-results" class="hidden"></div>
+
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal('modal-jira')" class="btn-secondary">Close</button>
+      <button id="btn-jira-export" onclick="exportToJira()" class="btn-primary">
+        <span id="jira-export-spinner" class="spinner hidden"></span>
+        Export to JIRA
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '';
 let issues = [];
@@ -756,6 +895,8 @@ let themes = [];
 let solutions = [];
 let selectedThemeId = null;
 let aiAvailable = false;
+let jiraAvailable = false;
+let jiraProject = '';
 let riceImpact = 1, riceConf = 80, riceEffort = 2;
 let backlogFilter = 'all';
 let pendingMoscow = null;
@@ -765,10 +906,16 @@ let currentRiceIssue = null;
 async function init() {
   const status = await api('GET', '/api/status');
   aiAvailable = status.aiAvailable;
+  jiraAvailable = status.jiraAvailable;
+  jiraProject = status.jiraProject || '';
   if (aiAvailable) {
     document.getElementById('ai-status-pill').classList.remove('hidden');
     document.getElementById('ai-status-text').textContent = 'Claude Haiku 4.5 active';
     document.getElementById('ai-status-text').classList.remove('hidden');
+  }
+  if (jiraAvailable) {
+    document.getElementById('btn-jira-header').classList.remove('hidden');
+    document.getElementById('btn-jira-roadmap').classList.remove('hidden');
   }
   await loadIssues();
   await loadThemes();
@@ -850,7 +997,7 @@ function showToast(msg, type = 'default') {
 }
 
 function switchTab(name) {
-  ['intake','moscow','rice','backlog','themes','strategy','dashboard'].forEach(t => {
+  ['intake','moscow','rice','backlog','themes','strategy','roadmap','dashboard'].forEach(t => {
     document.getElementById('view-'+t).classList.add('hidden');
     document.getElementById('tab-'+t).classList.remove('tab-active');
   });
@@ -861,7 +1008,7 @@ function switchTab(name) {
 
 function renderAll() {
   renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats();
-  renderThemes(); renderStrategyThemeSelect();
+  renderThemes(); renderStrategyThemeSelect(); renderRoadmap();
 }
 
 function updateStats() {
@@ -1407,6 +1554,157 @@ function renderMatrix() {
         </div>`).join('')}
       </div>`;
     }).join('');
+}
+
+// ─── ROADMAP ─────────────────────────────────────────────────────────────────
+
+function roadmapAutoCol(issue) {
+  const score = riceScore(issue);
+  const tier = riceTier(score);
+  if (tier === 'escalate') return 'now';
+  if (tier === 'sprint')   return 'next';
+  return 'later';
+}
+
+function roadmapCard(issue, currentCol) {
+  const score = riceScore(issue);
+  const colOptions = ['now','next','later'].map(c =>
+    `<option value="${c}" ${currentCol === c ? 'selected' : ''}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`
+  ).join('');
+  return `
+    <div class="roadmap-card">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="text-sm font-semibold leading-snug" style="color:var(--text)">${issue.title}</div>
+        ${score !== null ? `<div class="text-lg font-bold flex-shrink-0 ${riceClass(score)}" style="line-height:1.1">${score.toFixed(1)}</div>` : ''}
+      </div>
+      <div class="flex items-center gap-2 flex-wrap mb-2.5">
+        ${moscowBadge(issue.moscow)} ${srcTag(issue.source)} ${vipBadge(issue.tier)}
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        ${score !== null ? tierBadge(score) : '<span></span>'}
+        <select onchange="moveToColumn(${issue.id}, this.value)" class="roadmap-col-move">
+          <option value="">Move…</option>
+          ${colOptions}
+          ${currentCol ? '<option value="">Unplan</option>' : ''}
+        </select>
+      </div>
+    </div>`;
+}
+
+function renderRoadmap() {
+  const scored  = issues.filter(i => i.rice);
+  const manual  = issues.filter(i => !i.rice && i.roadmapColumn);
+  const plannable = [...scored, ...manual];
+  const unplanned = issues.filter(i => !i.rice && !i.roadmapColumn && (i.moscow === 'must' || i.moscow === 'should'));
+
+  const colMap = { now: [], next: [], later: [] };
+  plannable.forEach(i => {
+    const col = i.roadmapColumn || roadmapAutoCol(i);
+    if (colMap[col]) colMap[col].push(i);
+  });
+  Object.values(colMap).forEach(arr => arr.sort((a, b) => (riceScore(b) || 0) - (riceScore(a) || 0)));
+
+  const hasAnything = plannable.length || unplanned.length;
+  document.getElementById('roadmap-empty').classList.toggle('hidden', hasAnything > 0 || unplanned.length > 0);
+  document.getElementById('roadmap-columns').classList.toggle('hidden', !hasAnything);
+
+  ['now','next','later'].forEach(col => {
+    document.getElementById('count-' + col).textContent = colMap[col].length;
+    document.getElementById('col-' + col).innerHTML = colMap[col].length
+      ? colMap[col].map(i => roadmapCard(i, i.roadmapColumn || col)).join('')
+      : `<div class="text-xs text-center py-6 rounded-lg" style="color:var(--text-3);border:1px dashed var(--border)">No issues assigned</div>`;
+  });
+
+  const wrap = document.getElementById('roadmap-unplanned-wrap');
+  const colUnp = document.getElementById('col-unplanned');
+  if (unplanned.length) {
+    wrap.classList.remove('hidden');
+    colUnp.innerHTML = unplanned.map(i => roadmapCard(i, null)).join('');
+  } else {
+    wrap.classList.add('hidden');
+  }
+
+  if (!hasAnything && !unplanned.length) {
+    document.getElementById('roadmap-empty').classList.remove('hidden');
+    document.getElementById('roadmap-columns').classList.add('hidden');
+  }
+}
+
+async function moveToColumn(id, col) {
+  const val = (col === '' || col === 'unplan') ? null : col;
+  await api('PATCH', `/api/issues/${id}`, { roadmap_column: val });
+  await loadIssues();
+}
+
+// ─── JIRA ─────────────────────────────────────────────────────────────────────
+
+function openJiraModal() {
+  document.getElementById('jira-results').classList.add('hidden');
+  document.getElementById('jira-results').innerHTML = '';
+  document.getElementById('jira-export-form').classList.remove('hidden');
+  document.getElementById('btn-jira-export').disabled = false;
+  document.getElementById('btn-jira-export').innerHTML =
+    '<span id="jira-export-spinner" class="spinner hidden"></span> Export to JIRA';
+
+  const mustShouldCount = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
+  document.getElementById('jira-issue-count').textContent = mustShouldCount;
+
+  const banner = document.getElementById('jira-project-banner');
+  if (jiraAvailable) {
+    banner.classList.remove('hidden');
+    document.getElementById('jira-project-key').textContent = jiraProject;
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  document.getElementById('modal-jira').classList.remove('hidden');
+}
+
+async function exportToJira() {
+  const btn  = document.getElementById('btn-jira-export');
+  const spin = document.getElementById('jira-export-spinner');
+  btn.disabled = true;
+  spin.classList.remove('hidden');
+  try {
+    const data = await api('POST', '/api/export/jira', {});
+    if (data.error) { showToast(data.error, 'error'); return; }
+
+    const successes = data.results.filter(r => r.ok);
+    const failures  = data.results.filter(r => !r.ok);
+
+    document.getElementById('jira-export-form').classList.add('hidden');
+    const resultsEl = document.getElementById('jira-results');
+    resultsEl.classList.remove('hidden');
+
+    const successRows = successes.map(r => `
+      <div class="jira-row-ok">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#1A7A48" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <a href="${r.jiraUrl}" target="_blank" class="text-sm font-mono font-semibold" style="color:#2D55B8">${r.jiraKey}</a>
+        <span class="text-xs flex-1 truncate" style="color:var(--text-2)">${issues.find(i => i.id === r.issueId)?.title || ''}</span>
+      </div>`).join('');
+
+    const failRows = failures.length ? `
+      <div class="mt-4">
+        <div class="text-xs font-semibold mb-2" style="color:#B83222">Failed (${failures.length})</div>
+        ${failures.map(r => `<div class="jira-row-fail"><span style="color:#B83222">✗</span><span class="text-xs" style="color:var(--text-2)">Issue #${r.issueId}: ${r.error}</span></div>`).join('')}
+      </div>` : '';
+
+    resultsEl.innerHTML = `
+      <div class="mb-4 rounded-xl p-3.5 flex items-center gap-3" style="background:#EEFAF3;border:1px solid #AEEAC8">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9l4 4 8-8" stroke="#1A7A48" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="text-sm font-semibold" style="color:#1A7A48">${successes.length} of ${data.results.length} issues exported to ${data.project}</div>
+      </div>
+      <div class="mb-2 text-xs font-semibold uppercase tracking-wide" style="color:var(--text-3)">Created tickets</div>
+      <div>${successRows}</div>
+      ${failRows}`;
+
+    showToast(`✓ ${successes.length} issues exported to JIRA ${data.project}`);
+  } catch(e) {
+    showToast('Export failed', 'error');
+    btn.disabled = false;
+  } finally {
+    spin.classList.add('hidden');
+  }
 }
 
 init();
