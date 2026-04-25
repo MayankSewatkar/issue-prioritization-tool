@@ -1,5 +1,7 @@
 # PriorityOS — AI-Powered PM Issue Triage
 
+**Live demo → [priority-os-production.up.railway.app](https://priority-os-production.up.railway.app)**
+
 A full-stack product management triage tool that takes raw incoming issues and runs them through a structured PM workflow: MoSCoW classification → RICE scoring → theme clustering → solution strategy → roadmap planning → JIRA export.
 
 Built with Node.js / Express, SQLite, and Claude Haiku 4.5 for AI-assisted classification and clustering.
@@ -79,7 +81,7 @@ Push Must Have and Should Have issues directly to a JIRA project:
 - Each ticket gets `priorityos`, source, and tier labels
 - Results display created ticket keys as clickable links
 
-Requires JIRA credentials in `.env` (see Setup).
+Requires JIRA credentials in environment variables (see Setup).
 
 ### 9. PM Dashboard
 System health overview — noise eliminated %, escalation count, sprint backlog size, pipeline completion rate, MoSCoW distribution, RICE tier breakdown, and source mix.
@@ -95,10 +97,11 @@ System health overview — noise eliminated %, escalation count, sprint backlog 
 | AI | Anthropic Claude Haiku 4.5 |
 | Frontend | Vanilla JS + Tailwind CDN |
 | Fonts | DM Sans + DM Mono |
+| Hosting | Railway |
 
 ---
 
-## Setup
+## Local Setup
 
 ### 1. Clone and install
 
@@ -136,6 +139,39 @@ npm run dev
 ```
 
 Open `http://localhost:3000` in your browser.
+
+---
+
+## Deploy to Railway
+
+### 1. Install Railway CLI and login
+
+```bash
+npm install -g @railway/cli
+railway login
+```
+
+### 2. Link and deploy
+
+```bash
+railway init        # create a new project
+railway up          # deploy
+railway domain      # generate a public URL
+```
+
+### 3. Set environment variables
+
+```bash
+railway variables set ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional JIRA
+railway variables set JIRA_BASE_URL=https://yourorg.atlassian.net
+railway variables set JIRA_EMAIL=you@company.com
+railway variables set JIRA_API_TOKEN=your_token
+railway variables set JIRA_PROJECT_KEY=MYPROJ
+```
+
+Railway auto-injects `PORT` — the app reads it via `process.env.PORT`.
 
 ---
 
