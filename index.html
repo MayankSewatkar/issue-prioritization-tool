@@ -272,6 +272,7 @@
         <button onclick="switchTab('strategy')"  id="tab-strategy"  class="nav-tab">Strategy</button>
         <button onclick="switchTab('roadmap')"   id="tab-roadmap"   class="nav-tab">Roadmap</button>
         <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab">Dashboard</button>
+        <button onclick="switchTab('eval')"      id="tab-eval"      class="nav-tab">AI Eval</button>
       </nav>
 
       <!-- Actions -->
@@ -672,6 +673,74 @@
   </div>
 </div>
 
+<!-- ══ AI EVAL ══ -->
+<div id="view-eval" class="animate-slide hidden">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:var(--text)">AI Eval</h1>
+      <p class="text-sm mt-1" style="color:var(--text-2)">Run ground-truth tests against PriorityOS's classifier. Grades MoSCoW accuracy, RICE calibration, and reasoning quality.</p>
+    </div>
+    <button onclick="runEval()" id="btn-run-eval" class="btn-ai">
+      <span id="eval-spinner" class="spinner hidden"></span>
+      <svg id="eval-icon" width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0z" stroke="currentColor" stroke-width="1.5"/><path d="M5 6.5l1.5 1.5 2-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Run Eval
+    </button>
+  </div>
+
+  <!-- Summary cards (hidden until first run) -->
+  <div id="eval-summary" class="hidden">
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      <div class="stat-card" style="border-left:3px solid var(--primary)">
+        <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Pass Rate</div>
+        <div class="text-3xl font-bold" style="color:var(--primary)" id="eval-pass-rate">—</div>
+        <div class="text-xs mt-1" style="color:var(--text-3)" id="eval-pass-count"></div>
+      </div>
+      <div class="stat-card">
+        <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Overall Score</div>
+        <div class="text-3xl font-bold" style="color:var(--text)" id="eval-overall-score">—</div>
+        <div class="text-xs mt-1" style="color:var(--text-3)">out of 5.0</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Critical Errors</div>
+        <div class="text-3xl font-bold" id="eval-critical" style="color:#1A7A48">—</div>
+        <div class="text-xs mt-1" style="color:var(--text-3)">wrong approve/deny</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color:var(--text-3)">Test Cases</div>
+        <div class="text-3xl font-bold" style="color:var(--text)" id="eval-total">8</div>
+        <div class="text-xs mt-1" style="color:var(--text-3)">goldens</div>
+      </div>
+    </div>
+
+    <!-- Dimension score bars -->
+    <div class="card mb-6">
+      <div class="text-xs font-semibold uppercase tracking-wide mb-4" style="color:var(--text-3)">Scores by Dimension</div>
+      <div id="eval-dim-bars"></div>
+    </div>
+
+    <!-- Per-golden results table -->
+    <div class="card mb-6">
+      <div class="text-xs font-semibold uppercase tracking-wide mb-4" style="color:var(--text-3)">Per-Golden Results</div>
+      <div id="eval-results-table"></div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="eval-empty" class="card">
+    <div class="empty-state">
+      <svg class="empty-icon" viewBox="0 0 48 48" fill="none"><path d="M24 6l4 10h10l-8 6 3 10-9-6-9 6 3-10-8-6h10z" stroke="#94A3B8" stroke-width="2" stroke-linejoin="round"/></svg>
+      <div class="font-semibold mb-1" style="color:var(--text-2)">No eval runs yet</div>
+      <div class="text-sm" style="color:var(--text-3)">Click "Run Eval" to test the AI classifier against 8 ground-truth goldens</div>
+    </div>
+  </div>
+
+  <!-- Previous runs -->
+  <div id="eval-history-wrap" class="hidden mt-6">
+    <div class="text-xs font-semibold uppercase tracking-wide mb-3" style="color:var(--text-3)">Previous Runs</div>
+    <div id="eval-history-list" class="card" style="padding:8px 0"></div>
+  </div>
+</div>
+
 </main>
 
 <!-- ══ MODAL: ADD ISSUE ══ -->
@@ -919,6 +988,7 @@ async function init() {
   }
   await loadIssues();
   await loadThemes();
+  await loadEvalRuns();
 }
 
 async function api(method, path, body) {
@@ -997,7 +1067,7 @@ function showToast(msg, type = 'default') {
 }
 
 function switchTab(name) {
-  ['intake','moscow','rice','backlog','themes','strategy','roadmap','dashboard'].forEach(t => {
+  ['intake','moscow','rice','backlog','themes','strategy','roadmap','dashboard','eval'].forEach(t => {
     document.getElementById('view-'+t).classList.add('hidden');
     document.getElementById('tab-'+t).classList.remove('tab-active');
   });
@@ -1705,6 +1775,128 @@ async function exportToJira() {
   } finally {
     spin.classList.add('hidden');
   }
+}
+
+// ─── EVAL ─────────────────────────────────────────────────────────────────────
+
+let evalRuns = [];
+
+async function runEval() {
+  const btn  = document.getElementById('btn-run-eval');
+  const spin = document.getElementById('eval-spinner');
+  const icon = document.getElementById('eval-icon');
+  btn.disabled = true;
+  spin.classList.remove('hidden');
+  icon.classList.add('hidden');
+  try {
+    const data = await api('POST', '/api/evals/run');
+    if (data.error) { showToast(data.error, 'error'); return; }
+    renderEvalResults(data);
+    await loadEvalRuns();
+    showToast(`✦ Eval complete — ${data.summary.pass_rate} pass rate`, 'ai');
+  } catch(e) { showToast('Eval failed', 'error'); }
+  finally { btn.disabled = false; spin.classList.add('hidden'); icon.classList.remove('hidden'); }
+}
+
+async function loadEvalRun(id) {
+  const data = await api('GET', `/api/evals/runs/${id}`);
+  renderEvalResults(data);
+}
+
+async function loadEvalRuns() {
+  evalRuns = await api('GET', '/api/evals/runs');
+  renderEvalHistory();
+}
+
+function renderEvalHistory() {
+  const wrap = document.getElementById('eval-history-wrap');
+  const list = document.getElementById('eval-history-list');
+  if (!evalRuns.length) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  list.innerHTML = evalRuns.map(r => {
+    const passColor = parseInt(r.pass_rate) >= 80 ? '#1A7A48' : parseInt(r.pass_rate) >= 60 ? '#92600A' : '#B83222';
+    const critColor = r.critical_errors > 0 ? '#B83222' : '#1A7A48';
+    const d = new Date(r.run_at);
+    const ts = d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+    return `<div class="flex items-center justify-between px-5 py-3 border-b last:border-0" style="border-color:var(--border)">
+      <div class="flex items-center gap-4">
+        <span class="text-xs" style="color:var(--text-3)">${ts}</span>
+        <span class="text-sm font-bold" style="color:${passColor}">${r.pass_rate}</span>
+        <span class="text-xs" style="color:var(--text-3)">${r.passed}/${r.total} passed</span>
+        <span class="text-xs" style="color:${critColor}">${r.critical_errors} critical</span>
+        <span class="text-xs" style="color:var(--text-3)">score ${r.overall_score}/5</span>
+      </div>
+      <button onclick="loadEvalRun(${r.id})" class="btn-ghost text-xs">View →</button>
+    </div>`;
+  }).join('');
+}
+
+function renderEvalResults(data) {
+  const { summary, results } = data;
+
+  document.getElementById('eval-empty').classList.add('hidden');
+  document.getElementById('eval-summary').classList.remove('hidden');
+
+  const passInt = parseInt(summary.pass_rate);
+  const passColor = passInt >= 80 ? 'var(--primary)' : passInt >= 60 ? '#92600A' : '#B83222';
+  document.getElementById('eval-pass-rate').textContent = summary.pass_rate;
+  document.getElementById('eval-pass-rate').style.color = passColor;
+  document.getElementById('eval-pass-count').textContent = `${summary.passed} of ${summary.total}`;
+  document.getElementById('eval-overall-score').textContent = `${summary.overall_score}/5`;
+  document.getElementById('eval-critical').textContent = summary.critical_errors;
+  document.getElementById('eval-critical').style.color = summary.critical_errors > 0 ? '#B83222' : '#1A7A48';
+  document.getElementById('eval-total').textContent = summary.total;
+
+  // Dimension score bars
+  const dimLabels = { moscow_accuracy:'MoSCoW Accuracy', rice_calibration:'RICE Calibration', reasoning_keywords:'Reasoning Keywords', reasoning_quality:'Reasoning Quality (AI)' };
+  const dimColors = { moscow_accuracy:'#CC6B48', rice_calibration:'#7C3AED', reasoning_keywords:'#1A7A48', reasoning_quality:'#2D55B8' };
+  const barsEl = document.getElementById('eval-dim-bars');
+  barsEl.innerHTML = Object.entries(summary.average_scores || {}).map(([dim, score]) => {
+    const pct = Math.round((score / 5) * 100);
+    const color = dimColors[dim] || 'var(--primary)';
+    const label = dimLabels[dim] || dim.replace(/_/g,' ');
+    return `<div class="flex items-center gap-3 mb-3">
+      <div class="text-xs" style="color:var(--text-2);width:200px;flex-shrink:0">${label}</div>
+      <div class="flex-1 progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="text-xs font-bold mono" style="color:${color};width:36px;text-align:right">${score}/5</div>
+    </div>`;
+  }).join('');
+
+  // Per-golden table
+  const tableEl = document.getElementById('eval-results-table');
+  const verdictMap = { correct:'#1A7A48', wrong:'#B83222', critical:'#92600A' };
+  tableEl.innerHTML = `
+    <div class="grid text-xs font-semibold uppercase tracking-wide pb-2 mb-1" style="grid-template-columns:60px 1fr 80px 80px 80px 80px 64px;color:var(--text-3);border-bottom:1px solid var(--border)">
+      <div>ID</div><div>Scenario</div><div class="text-center">MoSCoW</div><div class="text-center">RICE</div><div class="text-center">Keywords</div><div class="text-center">AI Grade</div><div class="text-center">Status</div>
+    </div>
+    ${results.map(r => {
+      const moscow_r = r.ratings?.moscow_accuracy || {};
+      const rice_r   = r.ratings?.rice_calibration || {};
+      const kw_r     = r.ratings?.reasoning_keywords || {};
+      const ai_r     = r.ratings?.reasoning_quality || {};
+      const statusBg  = r.passed ? '#EEFAF3' : r.critical_error ? '#FEF9EC' : '#FEF0EE';
+      const statusColor = r.passed ? '#1A7A48' : r.critical_error ? '#92600A' : '#B83222';
+      const statusTxt   = r.passed ? 'PASS' : r.critical_error ? 'CRIT' : 'FAIL';
+      const actualBadge = moscow_r.actual ? `<span class="badge badge-${moscow_r.actual}">${moscow_r.actual.toUpperCase()}</span>` : '—';
+      const scoreCell = (score, max=5) => score != null
+        ? `<span class="text-xs font-bold mono" style="color:${score>=4?'#1A7A48':score>=3?'#92600A':'#B83222'}">${score}/${max}</span>`
+        : '<span style="color:var(--text-3)">—</span>';
+      return `<div class="grid items-center py-3" style="grid-template-columns:60px 1fr 80px 80px 80px 80px 64px;border-bottom:1px solid var(--border)">
+        <div class="text-xs font-mono font-semibold" style="color:var(--text-3)">${r.golden_id}</div>
+        <div>
+          <div class="text-xs font-semibold" style="color:var(--text)">${r.scenario}</div>
+          <div class="text-xs mt-0.5" style="color:var(--text-3)">${r.input?.title?.slice(0,60)}…</div>
+          ${moscow_r.actual ? `<div class="flex items-center gap-1.5 mt-1">${actualBadge}<span class="text-xs" style="color:${verdictMap[moscow_r.verdict]||'var(--text-3)'}">expected: ${moscow_r.expected}</span></div>` : ''}
+        </div>
+        <div class="text-center">${scoreCell(moscow_r.score)}</div>
+        <div class="text-center">${scoreCell(rice_r.score)}</div>
+        <div class="text-center">${scoreCell(kw_r.score)}</div>
+        <div class="text-center">${scoreCell(ai_r.score)}</div>
+        <div class="text-center">
+          <span class="badge text-xs" style="background:${statusBg};color:${statusColor};border:1px solid ${statusColor}30">${statusTxt}</span>
+        </div>
+      </div>`;
+    }).join('')}`;
 }
 
 init();

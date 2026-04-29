@@ -58,6 +58,19 @@ db.exec(`
 // Add roadmap_column to existing issues table (safe to run repeatedly)
 try { db.exec(`ALTER TABLE issues ADD COLUMN roadmap_column TEXT DEFAULT NULL`); } catch {}
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS eval_runs (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total        INTEGER,
+    passed       INTEGER,
+    pass_rate    TEXT,
+    critical_errors INTEGER,
+    overall_score REAL,
+    results      TEXT
+  )
+`);
+
 // ─── ANTHROPIC CLIENT ────────────────────────────────────────────────────────
 const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
 const anthropic = hasApiKey ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
@@ -103,6 +116,152 @@ For each solution:
 
 Solutions should represent meaningfully different approaches — not variations of the same idea.
 Always respond with valid JSON only. No markdown, no explanation outside the JSON.`;
+
+// ─── EVAL GOLDENS ─────────────────────────────────────────────────────────────
+
+const EVAL_GOLDENS = [
+  {
+    id: 'G-001', scenario: 'Critical revenue metric broken for all enterprise accounts', category: 'critical_outage',
+    input: { title: 'ROAS dashboard returns 0 for all enterprise accounts', desc: 'All enterprise clients reporting 0 ROAS since last deploy. Critical revenue metric broken.', source: 'support', tier: 'vip' },
+    expected: { moscow: 'must', acceptable: ['must'], rice_ranges: { reach:[8,10], impact:[2,3], confidence:[80,100], effort:[1,4] } },
+    must_mention: ['revenue','enterprise','roas','critical'], critical_misses: ['could','wont']
+  },
+  {
+    id: 'G-002', scenario: 'Lead scoring inverted — active churn risk', category: 'critical_outage',
+    input: { title: 'Lead scoring model returning inverted rankings — low-intent leads marked as hot', desc: 'Enterprise customers reporting their sales reps are calling cold leads first. Root cause: model weight flip after last night\'s retrain. One account is churning over this.', source: 'cs', tier: 'vip' },
+    expected: { moscow: 'must', acceptable: ['must'], rice_ranges: { reach:[7,10], impact:[3,3], confidence:[80,100], effort:[1,2] } },
+    must_mention: ['churn','revenue','enterprise'], critical_misses: ['should','could','wont']
+  },
+  {
+    id: 'G-003', scenario: 'AI copy generation failing for 38% of requests', category: 'partial_outage',
+    input: { title: 'AI ad copy generation returning null for 38% of requests', desc: 'Product analytics alert: copy generation endpoint has a 38% null response rate since the v2.4 deploy. Customers on the Growth plan cannot generate new ad variants.', source: 'analytics', tier: 'standard' },
+    expected: { moscow: 'must', acceptable: ['must'], rice_ranges: { reach:[5,8], impact:[2,3], confidence:[80,100], effort:[1,4] } },
+    must_mention: ['38%','null','copy'], critical_misses: ['could','wont']
+  },
+  {
+    id: 'G-004', scenario: 'Audience export times out — workaround exists', category: 'performance_degradation',
+    input: { title: 'Audience segmentation export timing out for cohorts larger than 500k records', desc: 'Power users in the retail vertical build audiences of 1M+ records. Export jobs fail silently after 10 minutes. Users have to split manually as a workaround.', source: 'support', tier: 'standard' },
+    expected: { moscow: 'should', acceptable: ['should','must'], rice_ranges: { reach:[3,6], impact:[1,2], confidence:[70,100], effort:[2,8] } },
+    must_mention: ['retail','export','workaround'], critical_misses: ['wont']
+  },
+  {
+    id: 'G-005', scenario: 'Email sequence metrics delayed 48+ hours', category: 'performance_degradation',
+    input: { title: 'Email sequence performance metrics delayed by 48+ hours', desc: 'Open rates, CTR, and reply rates for outbound sequences are not updating in real time. Sales teams cannot make intra-day adjustments to active campaigns.', source: 'sales', tier: 'standard' },
+    expected: { moscow: 'should', acceptable: ['should'], rice_ranges: { reach:[4,7], impact:[1,2], confidence:[70,100], effort:[1,4] } },
+    must_mention: ['sales','delay','campaign'], critical_misses: ['must','wont']
+  },
+  {
+    id: 'G-006', scenario: 'Single prospect requesting native mobile app', category: 'noise',
+    input: { title: 'Build a native iOS and Android mobile app', desc: 'One SMB prospect mentioned they would prefer a mobile app during a sales demo. No other requests on record.', source: 'sales', tier: 'standard' },
+    expected: { moscow: 'wont', acceptable: ['wont'], rice_ranges: { reach:[1,2], impact:[0.5,1], confidence:[20,50], effort:[8,8] } },
+    must_mention: ['single','one','prospect'], critical_misses: ['must','should']
+  },
+  {
+    id: 'G-007', scenario: 'Internal designer requests sidebar icon change', category: 'noise',
+    input: { title: 'Change the sidebar icon for the Audiences module', desc: 'Internal design feedback from one team member that the current icon looks too similar to the Segments icon.', source: 'internal', tier: 'standard' },
+    expected: { moscow: 'could', acceptable: ['could','wont'], rice_ranges: { reach:[1,3], impact:[0.5,0.5], confidence:[20,50], effort:[0.5,1] } },
+    must_mention: ['cosmetic','internal','icon'], critical_misses: ['must','should']
+  },
+  {
+    id: 'G-008', scenario: 'VIP SLA breach — $40k MRR account', category: 'sla_breach',
+    input: { title: 'Ad spend sync delay >6 hours for Acme Corp', desc: 'Acme Corp ($40k MRR) reporting sync lag consistently above 6 hours. SLA guarantee is 2 hours. Customer is threatening to escalate.', source: 'cs', tier: 'vip' },
+    expected: { moscow: 'must', acceptable: ['must'], rice_ranges: { reach:[2,4], impact:[2,3], confidence:[80,100], effort:[1,4] } },
+    must_mention: ['sla','vip','$40k','escalat'], critical_misses: ['should','could','wont']
+  }
+];
+
+const REASONING_RATER_SYSTEM = `You are a PM quality reviewer checking if an AI classifier's reasoning is accurate and useful.
+
+Evaluate whether the reasoning sentence cites the specific signals from the issue (scope, severity, business impact), accurately explains the MoSCoW label, and is NOT generic ("This is important").
+
+Respond ONLY with valid JSON: {"score": <1-5>, "reasoning": "<one sentence>"}
+5=cites specific signals fully, 4=mostly accurate minor gaps, 3=correct label but vague, 2=misses key signals, 1=inaccurate`;
+
+// ─── EVAL RATERS ──────────────────────────────────────────────────────────────
+
+function rateMoscow(golden, output) {
+  const actual = output.moscow || '';
+  const exact = actual === golden.expected.moscow;
+  const acceptable = (golden.expected.acceptable || [golden.expected.moscow]).includes(actual);
+  const critical = (golden.critical_misses || []).includes(actual);
+  return {
+    rater: 'moscow_accuracy',
+    score: exact ? 5 : acceptable ? 4 : critical ? 1 : 2,
+    expected: golden.expected.moscow, actual,
+    exact_match: exact, critical_error: critical,
+    verdict: acceptable ? 'correct' : critical ? 'critical' : 'wrong'
+  };
+}
+
+function rateRice(golden, output) {
+  const rice = output.rice || {};
+  const ranges = golden.expected.rice_ranges;
+  const valid = { impact:[0.5,1,2,3], confidence:[20,50,80,100], effort:[0.5,1,2,4,8] };
+  let correct = 0; const total = Object.keys(ranges).length;
+  const out = [];
+
+  for (const [dim, [lo, hi]] of Object.entries(ranges)) {
+    const val = rice[dim];
+    if (val == null) { out.push(`${dim}=missing`); continue; }
+    const ok = valid[dim] ? (lo <= val && val <= hi) : (lo <= val && val <= hi);
+    if (ok) correct++; else out.push(`${dim}=${val} (expected ${lo}–${hi})`);
+  }
+
+  return {
+    rater: 'rice_calibration',
+    score: Math.round((correct / total) * 5),
+    dims_correct: `${correct}/${total}`,
+    out_of_range: out
+  };
+}
+
+function rateKeywords(golden, output) {
+  const text = `${output.moscow_reasoning || ''} ${output.rice_reasoning || ''}`.toLowerCase();
+  const required = golden.must_mention || [];
+  const found = required.filter(kw => text.includes(kw.toLowerCase()));
+  const missing = required.filter(kw => !text.includes(kw.toLowerCase()));
+  const score = required.length ? Math.max(1, Math.round((found.length / required.length) * 5)) : 5;
+  return {
+    rater: 'reasoning_keywords',
+    score, found, missing,
+    pass_rate: `${found.length}/${required.length}`
+  };
+}
+
+async function rateReasoningAI(golden, output) {
+  if (!anthropic) return { rater: 'reasoning_quality', score: null, skipped: true };
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 200,
+      system: [{ type: 'text', text: REASONING_RATER_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content:
+        `Issue: ${golden.input.title}\nTier: ${golden.input.tier} | Source: ${golden.input.source}\nExpected MoSCoW: ${golden.expected.moscow}\n\nAI MoSCoW reasoning: ${output.moscow_reasoning || ''}\nAI RICE reasoning: ${output.rice_reasoning || ''}` }]
+    });
+    let text = response.content[0].text.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+    const parsed = JSON.parse(text);
+    return { rater: 'reasoning_quality', ...parsed };
+  } catch { return { rater: 'reasoning_quality', score: 3, reasoning: 'Grader error — defaulted to 3' }; }
+}
+
+async function gradeGolden(golden, output) {
+  const r_moscow = rateMoscow(golden, output);
+  const r_rice   = rateRice(golden, output);
+  const r_kw     = rateKeywords(golden, output);
+  const r_ai     = await rateReasoningAI(golden, output);
+
+  const scores = [r_moscow.score, r_rice.score, r_kw.score, r_ai.score].filter(s => s != null);
+  const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0) / scores.length * 10) / 10 : 0;
+
+  return {
+    golden_id: golden.id, scenario: golden.scenario, category: golden.category,
+    input: golden.input, output,
+    ratings: { moscow_accuracy: r_moscow, rice_calibration: r_rice, reasoning_keywords: r_kw, reasoning_quality: r_ai },
+    scores: { moscow_accuracy: r_moscow.score, rice_calibration: r_rice.score, reasoning_keywords: r_kw.score, reasoning_quality: r_ai.score },
+    average_score: avg,
+    critical_error: r_moscow.critical_error,
+    passed: avg >= 3.5 && !r_moscow.critical_error
+  };
+}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function toIssue(row) {
@@ -485,6 +644,75 @@ app.post('/api/solutions/generate', async (req, res) => {
     console.error('Solutions error:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── EVAL ─────────────────────────────────────────────────────────────────────
+
+app.get('/api/evals/goldens', (req, res) => {
+  res.json(EVAL_GOLDENS.map(g => ({
+    id: g.id, scenario: g.scenario, category: g.category, input: g.input, expected: g.expected
+  })));
+});
+
+app.post('/api/evals/run', async (req, res) => {
+  if (!anthropic) return res.status(503).json({ error: 'ANTHROPIC_API_KEY not configured' });
+
+  const results = [];
+  for (const golden of EVAL_GOLDENS) {
+    let output;
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 512,
+        system: [{ type: 'text', text: CLASSIFY_SYSTEM, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content:
+          `Classify this issue and suggest RICE inputs:\n\nTitle: ${golden.input.title}\nDescription: ${golden.input.desc || 'N/A'}\nSource: ${golden.input.source}\nCustomer Tier: ${golden.input.tier}\n\nRespond with JSON exactly like this:\n{"moscow":"must|should|could|wont","moscow_reasoning":"one sentence why","rice":{"reach":<1-10>,"impact":<0.5|1|2|3>,"confidence":<20|50|80|100>,"effort":<0.5|1|2|4|8>},"rice_reasoning":"one sentence"}`
+        }]
+      });
+      let text = response.content[0].text.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+      output = JSON.parse(text);
+    } catch(e) {
+      output = { moscow: null, moscow_reasoning: '', rice: null, rice_reasoning: '', error: e.message };
+    }
+    const result = await gradeGolden(golden, output);
+    results.push(result);
+  }
+
+  const passed = results.filter(r => r.passed).length;
+  const criticals = results.filter(r => r.critical_error).length;
+  const dimScores = {};
+  for (const r of results) {
+    for (const [dim, score] of Object.entries(r.scores)) {
+      if (score != null) { dimScores[dim] = (dimScores[dim] || []); dimScores[dim].push(score); }
+    }
+  }
+  const avgDims = Object.fromEntries(
+    Object.entries(dimScores).map(([d,vs]) => [d, Math.round(vs.reduce((a,b)=>a+b,0)/vs.length*10)/10])
+  );
+  const overall = Object.values(avgDims).length
+    ? Math.round(Object.values(avgDims).reduce((a,b)=>a+b,0) / Object.values(avgDims).length * 10) / 10
+    : 0;
+
+  const summary = {
+    total: EVAL_GOLDENS.length, passed, failed: EVAL_GOLDENS.length - passed,
+    pass_rate: `${Math.round(passed / EVAL_GOLDENS.length * 100)}%`,
+    critical_errors: criticals, overall_score: overall, average_scores: avgDims
+  };
+
+  db.prepare(`INSERT INTO eval_runs (total, passed, pass_rate, critical_errors, overall_score, results)
+    VALUES (?,?,?,?,?,?)`).run(summary.total, summary.passed, summary.pass_rate, summary.critical_errors, summary.overall_score, JSON.stringify({ summary, results }));
+
+  res.json({ summary, results });
+});
+
+app.get('/api/evals/runs', (req, res) => {
+  const rows = db.prepare('SELECT id, run_at, total, passed, pass_rate, critical_errors, overall_score FROM eval_runs ORDER BY run_at DESC LIMIT 10').all();
+  res.json(rows);
+});
+
+app.get('/api/evals/runs/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM eval_runs WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Run not found' });
+  res.json(JSON.parse(row.results));
 });
 
 // Catch-all → serve index.html
