@@ -13,6 +13,19 @@ Built with Node.js / Express, SQLite, and Claude Haiku 4.5 for AI-assisted class
 ### 1. Issue Intake
 Capture incoming issues from any source — Customer Support, Product Analytics, Sales, Customer Success, or Internal stakeholders. Each issue records a title, description, source, and customer tier (Standard / VIP).
 
+**CSV Import** — bulk-load issues from a spreadsheet in one click. Click **↑ Import CSV** in the nav, drag-and-drop (or browse for) a `.csv` file, preview the parsed rows, and confirm. A downloadable template is provided.
+
+Required column: `title` — Optional: `description`, `source`, `tier`
+
+```csv
+title,description,source,tier
+Login crashes on mobile,"iOS Safari white screen after submit",support,vip
+Dashboard loads slowly,"8+ seconds for large accounts",analytics,standard
+```
+
+Valid `source` values: `support`, `analytics`, `sales`, `internal`, `cs`
+Valid `tier` values: `standard`, `vip` (anything else defaults to `standard`)
+
 ### 2. MoSCoW Classification
 Classify every issue into one of four buckets:
 
@@ -239,7 +252,7 @@ Railway auto-injects `PORT` — the app reads it via `process.env.PORT`.
 Intake → MoSCoW → RICE Score → Backlog → Themes → Strategy → Roadmap → JIRA
 ```
 
-1. **Add issues** via the Intake tab or click "Load Samples" for demo data
+1. **Add issues** via the Intake tab, click "Load Samples" for demo data, or **↑ Import CSV** to bulk-load from a spreadsheet
 2. **Classify** each issue in the MoSCoW tab (manual or AI) — every AI call is logged
 3. **Score** Must/Should issues in the RICE tab
 4. **Review** the ranked Backlog
@@ -258,6 +271,7 @@ Intake → MoSCoW → RICE Score → Backlog → Themes → Strategy → Roadmap
 | `/api/issues` | GET | All issues |
 | `/api/issues` | POST | Create issue (accepts `log_id` to link AI suggestion) |
 | `/api/issues/:id` | PATCH | Update MoSCoW, RICE, or roadmap column (triggers feedback log) |
+| `/api/import` | POST | Bulk import issues from a parsed CSV (`{ rows: [...] }`) |
 | `/api/classify` | POST | AI MoSCoW + RICE suggestion (returns `logId`, `latencyMs`) |
 | `/api/metrics` | GET | AI performance stats — agreement rate, latency, confusion matrix, Go/No-Go |
 | `/api/themes` | GET/POST | Manage problem theme clusters |
