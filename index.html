@@ -638,6 +638,25 @@
     <div class="grid grid-cols-5 gap-4" id="source-breakdown"><div class="text-sm text-slate-400">No data yet</div></div>
   </div>
 
+  <div class="card mb-5" id="gonogo-panel">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm font-semibold text-slate-700">AI Classifier — Go/No-Go</div>
+      <span id="gonogo-badge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500">Loading…</span>
+    </div>
+    <div class="grid grid-cols-4 gap-4 mb-4" id="gonogo-stats">
+      <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100"><div class="text-2xl font-bold text-slate-700" id="gng-total">—</div><div class="text-xs text-slate-400 mt-1">AI Predictions</div></div>
+      <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100"><div class="text-2xl font-bold text-slate-700" id="gng-resolved">—</div><div class="text-xs text-slate-400 mt-1">Human-Reviewed</div></div>
+      <div class="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100"><div class="text-2xl font-bold text-emerald-700" id="gng-rate">—</div><div class="text-xs text-slate-400 mt-1">Agreement Rate</div></div>
+      <div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100"><div class="text-2xl font-bold text-slate-700" id="gng-latency">—</div><div class="text-xs text-slate-400 mt-1">Avg Latency</div></div>
+    </div>
+    <div class="flex items-center gap-3 text-xs text-slate-500">
+      <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400"></span>GO ≥75% agreement</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400"></span>REVIEW 50–74%</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-400"></span>NO-GO &lt;50%</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-300"></span>Insufficient data (&lt;5 reviews)</span>
+    </div>
+  </div>
+
   <div class="card">
     <div class="text-sm font-semibold text-slate-700 mb-4">Triage Pipeline</div>
     <div class="grid grid-cols-4 gap-3">
@@ -966,6 +985,7 @@ let selectedThemeId = null;
 let aiAvailable = false;
 let jiraAvailable = false;
 let jiraProject = '';
+let pendingLogId = null;
 let riceImpact = 1, riceConf = 80, riceEffort = 2;
 let backlogFilter = 'all';
 let pendingMoscow = null;
@@ -1077,7 +1097,7 @@ function switchTab(name) {
 }
 
 function renderAll() {
-  renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats();
+  renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats(); // renderDashboard is async but fire-and-forget here
   renderThemes(); renderStrategyThemeSelect(); renderRoadmap();
 }
 
@@ -1257,6 +1277,20 @@ function renderDashboard() {
     return c ? `<div class="text-center p-3 bg-slate-50 rounded-lg border border-slate-100"><div class="text-2xl font-bold text-slate-700">${c}</div><div class="text-xs text-slate-400 mt-1">${SOURCES[s]}</div></div>` : '';
   }).filter(Boolean).join('');
   srcEl.innerHTML = srcItems || '<div class="text-sm text-slate-400">No data yet</div>';
+
+  // Go/No-Go panel
+  try {
+    const m = await api('GET', '/api/metrics');
+    document.getElementById('gng-total').textContent = m.total;
+    document.getElementById('gng-resolved').textContent = m.resolved;
+    document.getElementById('gng-rate').textContent = m.agreementRate != null ? m.agreementRate + '%' : '—';
+    document.getElementById('gng-latency').textContent = m.avgLatencyMs ? m.avgLatencyMs + 'ms' : '—';
+    const badge = document.getElementById('gonogo-badge');
+    const cfg = { go: ['GO', 'bg-emerald-100 text-emerald-700'], review: ['REVIEW', 'bg-amber-100 text-amber-700'], 'no-go': ['NO-GO', 'bg-rose-100 text-rose-700'], insufficient: ['PENDING DATA', 'bg-slate-100 text-slate-500'] };
+    const [label, cls] = cfg[m.goNoGo] || cfg.insufficient;
+    badge.textContent = label;
+    badge.className = `text-xs font-semibold px-2.5 py-1 rounded-full ${cls}`;
+  } catch(e) { /* metrics unavailable */ }
 }
 
 function openAddIssue() {
@@ -1285,6 +1319,7 @@ async function aiClassifyPreview() {
     if (data.error) { showToast('AI error: ' + data.error, 'error'); return; }
     pendingMoscow = data.moscow;
     pendingRiceAI = data.rice;
+    pendingLogId  = data.logId || null;
     const labels = { must:'MUST HAVE', should:'SHOULD HAVE', could:'COULD HAVE', wont:"WON'T HAVE" };
     document.getElementById('ai-moscow-result').innerHTML = `Suggested: <strong>${labels[data.moscow]}</strong>`;
     document.getElementById('ai-reasoning-result').textContent = data.moscow_reasoning;
@@ -1301,11 +1336,13 @@ async function addIssue() {
     title, desc: document.getElementById('input-desc').value.trim(),
     source: document.getElementById('input-source').value,
     tier: document.getElementById('input-tier').value,
-    hint: pendingMoscow || ''
+    hint: pendingMoscow || '',
+    log_id: pendingLogId || undefined
   });
   if (pendingRiceAI && (pendingMoscow === 'must' || pendingMoscow === 'should')) {
     await api('PATCH', `/api/issues/${issue.id}`, { rice: { ...pendingRiceAI, vip: document.getElementById('input-tier').value === 'vip' } });
   }
+  pendingLogId = null;
   closeModal('modal-add');
   await loadIssues();
   showToast('Issue added to queue');

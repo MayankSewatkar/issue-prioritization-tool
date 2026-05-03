@@ -71,6 +71,18 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ai_logs (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    issue_id     INTEGER DEFAULT NULL,
+    ai_moscow    TEXT    NOT NULL,
+    human_moscow TEXT    DEFAULT NULL,
+    agreed       INTEGER DEFAULT NULL,
+    latency_ms   INTEGER DEFAULT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // ─── ANTHROPIC CLIENT ────────────────────────────────────────────────────────
 const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
 const anthropic = hasApiKey ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
@@ -305,7 +317,7 @@ app.get('/api/issues', (req, res) => {
 
 // POST /api/issues
 app.post('/api/issues', (req, res) => {
-  const { title, desc = '', source = 'support', tier = 'standard', hint = '' } = req.body;
+  const { title, desc = '', source = 'support', tier = 'standard', hint = '', log_id } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
 
   const stmt = db.prepare(`
@@ -313,7 +325,19 @@ app.post('/api/issues', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(title.trim(), desc, source, tier, hint, hint || null);
-  const row = db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid);
+  const newId = result.lastInsertRowid;
+
+  // Link and resolve a pending AI log from the preview flow
+  if (log_id) {
+    const logRow = db.prepare('SELECT ai_moscow FROM ai_logs WHERE id = ?').get(log_id);
+    if (logRow) {
+      const agreed = hint && hint === logRow.ai_moscow ? 1 : 0;
+      db.prepare(`UPDATE ai_logs SET issue_id = ?, human_moscow = ?, agreed = ? WHERE id = ?`)
+        .run(newId, hint || null, hint ? agreed : null, log_id);
+    }
+  }
+
+  const row = db.prepare('SELECT * FROM issues WHERE id = ?').get(newId);
   res.status(201).json(toIssue(row));
 });
 
@@ -326,6 +350,14 @@ app.patch('/api/issues/:id', (req, res) => {
   const { moscow, rice, roadmap_column } = req.body;
   if (moscow !== undefined) {
     db.prepare('UPDATE issues SET moscow = ? WHERE id = ?').run(moscow, id);
+    // Resolve any pending AI log for this issue (feedback loop)
+    const pending = db.prepare(
+      `SELECT id, ai_moscow FROM ai_logs WHERE issue_id = ? AND human_moscow IS NULL ORDER BY created_at DESC LIMIT 1`
+    ).get(id);
+    if (pending) {
+      db.prepare(`UPDATE ai_logs SET human_moscow = ?, agreed = ? WHERE id = ?`)
+        .run(moscow, pending.ai_moscow === moscow ? 1 : 0, pending.id);
+    }
   }
   if (roadmap_column !== undefined) {
     db.prepare('UPDATE issues SET roadmap_column = ? WHERE id = ?').run(roadmap_column, id);
@@ -362,9 +394,10 @@ app.post('/api/classify', async (req, res) => {
     return res.status(503).json({ error: 'ANTHROPIC_API_KEY not configured', aiAvailable: false });
   }
 
-  const { title, desc, source, tier } = req.body;
+  const { title, desc, source, tier, issue_id } = req.body;
   if (!title) return res.status(400).json({ error: 'Title required' });
 
+  const t0 = Date.now();
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -394,10 +427,17 @@ Respond with JSON exactly like this:
       }]
     });
 
+    const latency = Date.now() - t0;
     let text = response.content[0].text.trim();
     text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     const parsed = JSON.parse(text);
-    res.json({ ...parsed, aiAvailable: true });
+
+    // Log the AI suggestion for feedback loop tracking
+    const logRow = db.prepare(
+      `INSERT INTO ai_logs (issue_id, ai_moscow, latency_ms) VALUES (?, ?, ?)`
+    ).run(issue_id || null, parsed.moscow, latency);
+
+    res.json({ ...parsed, aiAvailable: true, logId: logRow.lastInsertRowid, latencyMs: latency });
   } catch (err) {
     console.error('Classify error:', err.message);
     res.status(500).json({ error: err.message });
@@ -713,6 +753,36 @@ app.get('/api/evals/runs/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM eval_runs WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Run not found' });
   res.json(JSON.parse(row.results));
+});
+
+// GET /api/metrics  — AI feedback loop stats for dashboard Go/No-Go panel
+app.get('/api/metrics', (req, res) => {
+  const total    = db.prepare('SELECT COUNT(*) as c FROM ai_logs').get().c;
+  const resolved = db.prepare('SELECT COUNT(*) as c FROM ai_logs WHERE human_moscow IS NOT NULL').get().c;
+  const agreed   = db.prepare('SELECT COUNT(*) as c FROM ai_logs WHERE agreed = 1').get().c;
+  const avgLat   = db.prepare('SELECT AVG(latency_ms) as a FROM ai_logs WHERE latency_ms IS NOT NULL').get().a;
+
+  const confusion = db.prepare(`
+    SELECT ai_moscow, human_moscow, COUNT(*) as count
+    FROM ai_logs WHERE human_moscow IS NOT NULL
+    GROUP BY ai_moscow, human_moscow ORDER BY count DESC
+  `).all();
+
+  const agreementRate = resolved >= 1 ? Math.round(agreed / resolved * 100) : null;
+  const goNoGo = resolved < 5   ? 'insufficient'
+    : agreementRate >= 75        ? 'go'
+    : agreementRate >= 50        ? 'review'
+    :                              'no-go';
+
+  res.json({
+    total, resolved, agreed,
+    disagreed: resolved - agreed,
+    agreementRate,
+    avgLatencyMs: avgLat ? Math.round(avgLat) : null,
+    confusion,
+    goNoGo,
+    thresholds: { go: 75, review: 50 }
+  });
 });
 
 // Catch-all → serve index.html
