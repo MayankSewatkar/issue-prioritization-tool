@@ -244,12 +244,12 @@
 <!-- ══ HEADER ══ -->
 <header style="background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;box-shadow:0 1px 6px rgba(28,20,16,.07)">
   <div class="max-w-6xl mx-auto px-6">
-    <div class="flex items-center justify-between h-14 gap-4 min-w-0">
 
-      <!-- Logo -->
-      <div class="flex items-center gap-3 flex-shrink-0">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(145deg,#CC6B48,#B85D3C)">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <!-- Row 1: Logo + Actions -->
+    <div class="flex items-center justify-between h-12 gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(145deg,#CC6B48,#B85D3C)">
+          <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
             <path d="M2 4h11M2 7.5h7.5M2 11h5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
         </div>
@@ -261,22 +261,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Nav -->
-      <nav class="flex items-center gap-0.5 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;flex-shrink:1;min-width:0">
-        <button onclick="switchTab('intake')"    id="tab-intake"    class="nav-tab tab-active">Intake</button>
-        <button onclick="switchTab('moscow')"    id="tab-moscow"    class="nav-tab">MoSCoW</button>
-        <button onclick="switchTab('rice')"      id="tab-rice"      class="nav-tab">RICE</button>
-        <button onclick="switchTab('backlog')"   id="tab-backlog"   class="nav-tab">Backlog</button>
-        <button onclick="switchTab('themes')"    id="tab-themes"    class="nav-tab">Themes</button>
-        <button onclick="switchTab('strategy')"  id="tab-strategy"  class="nav-tab">Strategy</button>
-        <button onclick="switchTab('roadmap')"   id="tab-roadmap"   class="nav-tab">Roadmap</button>
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab">Dashboard</button>
-        <button onclick="switchTab('eval')"      id="tab-eval"      class="nav-tab">AI Eval</button>
-      </nav>
-
-      <!-- Actions -->
-      <div class="flex items-center gap-2 flex-shrink-0">
+      <div class="flex items-center gap-2">
         <span class="text-xs hidden" style="color:var(--text-3)" id="ai-status-text"></span>
         <button onclick="seedData()" class="btn-ghost text-xs">Load Samples</button>
         <button onclick="openJiraModal()" id="btn-jira-header" class="btn-ghost text-xs hidden" style="color:#2D55B8">⬆ JIRA</button>
@@ -287,6 +272,20 @@
         </button>
       </div>
     </div>
+
+    <!-- Row 2: Nav tabs — full width -->
+    <nav class="flex items-center gap-0.5 pb-1.5">
+      <button onclick="switchTab('intake')"    id="tab-intake"    class="nav-tab tab-active">Intake</button>
+      <button onclick="switchTab('moscow')"    id="tab-moscow"    class="nav-tab">MoSCoW</button>
+      <button onclick="switchTab('rice')"      id="tab-rice"      class="nav-tab">RICE</button>
+      <button onclick="switchTab('backlog')"   id="tab-backlog"   class="nav-tab">Backlog</button>
+      <button onclick="switchTab('themes')"    id="tab-themes"    class="nav-tab">Themes</button>
+      <button onclick="switchTab('strategy')"  id="tab-strategy"  class="nav-tab">Strategy</button>
+      <button onclick="switchTab('roadmap')"   id="tab-roadmap"   class="nav-tab">Roadmap</button>
+      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-tab">Dashboard</button>
+      <button onclick="switchTab('eval')"      id="tab-eval"      class="nav-tab">AI Eval</button>
+    </nav>
+
   </div>
 </header>
 
