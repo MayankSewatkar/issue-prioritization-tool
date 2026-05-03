@@ -244,7 +244,7 @@
 <!-- ══ HEADER ══ -->
 <header style="background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;box-shadow:0 1px 6px rgba(28,20,16,.07)">
   <div class="max-w-6xl mx-auto px-6">
-    <div class="flex items-center justify-between h-14 gap-6">
+    <div class="flex items-center justify-between h-14 gap-4 min-w-0">
 
       <!-- Logo -->
       <div class="flex items-center gap-3 flex-shrink-0">
@@ -263,10 +263,10 @@
       </div>
 
       <!-- Nav -->
-      <nav class="flex items-center gap-1">
+      <nav class="flex items-center gap-0.5 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;flex-shrink:1;min-width:0">
         <button onclick="switchTab('intake')"    id="tab-intake"    class="nav-tab tab-active">Intake</button>
         <button onclick="switchTab('moscow')"    id="tab-moscow"    class="nav-tab">MoSCoW</button>
-        <button onclick="switchTab('rice')"      id="tab-rice"      class="nav-tab">RICE Scoring</button>
+        <button onclick="switchTab('rice')"      id="tab-rice"      class="nav-tab">RICE</button>
         <button onclick="switchTab('backlog')"   id="tab-backlog"   class="nav-tab">Backlog</button>
         <button onclick="switchTab('themes')"    id="tab-themes"    class="nav-tab">Themes</button>
         <button onclick="switchTab('strategy')"  id="tab-strategy"  class="nav-tab">Strategy</button>
@@ -1097,8 +1097,9 @@ function switchTab(name) {
 }
 
 function renderAll() {
-  renderIntake(); renderMoscow(); renderRice(); renderBacklog(); renderDashboard(); updateStats(); // renderDashboard is async but fire-and-forget here
+  renderIntake(); renderMoscow(); renderRice(); renderBacklog(); updateStats();
   renderThemes(); renderStrategyThemeSelect(); renderRoadmap();
+  renderDashboard().catch(() => {});
 }
 
 function updateStats() {
