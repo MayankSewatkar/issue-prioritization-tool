@@ -4,7 +4,7 @@
 
 A full-stack product management triage tool that takes raw incoming issues and runs them through a structured PM workflow: MoSCoW classification → RICE scoring → theme clustering → solution strategy → roadmap planning → JIRA export.
 
-Built with Node.js / Express, SQLite, and Claude Haiku 4.5 for AI-assisted classification and clustering.
+Built with Node.js / Express, SQLite, and Claude Haiku 4.5 for AI-assisted classification, clustering, and performance measurement.
 
 ---
 
@@ -23,7 +23,7 @@ Classify every issue into one of four buckets:
 | **Could Have** | Nice to have, low urgency, <5% impact |
 | **Won't Have** | Noise, out of scope, duplicate, feature creep |
 
-Includes one-click **AI classify** (Claude Haiku 4.5) that suggests a MoSCoW label with a reasoning sentence.
+One-click **AI classify** (Claude Haiku 4.5) suggests a MoSCoW label with a reasoning sentence. Every AI suggestion is logged with a timestamp and latency so agreement vs. override can be tracked over time.
 
 ### 3. RICE Scoring
 Score Must/Should issues on four dimensions:
@@ -84,7 +84,65 @@ Push Must Have and Should Have issues directly to a JIRA project:
 Requires JIRA credentials in environment variables (see Setup).
 
 ### 9. PM Dashboard
-System health overview — noise eliminated %, escalation count, sprint backlog size, pipeline completion rate, MoSCoW distribution, RICE tier breakdown, and source mix.
+System health overview — noise eliminated %, escalation count, sprint backlog size, pipeline completion rate, MoSCoW distribution, RICE tier breakdown, source mix, and the **AI Classifier Go/No-Go panel** (see below).
+
+### 10. AI Eval Tab
+Ground-truth evaluation runner. Feed labeled test cases into the classifier and measure accuracy against known-correct MoSCoW labels. Tracks pass/fail per scenario and surfaces systematic misclassification patterns.
+
+---
+
+## AI Performance Monitoring
+
+### Model performance metrics
+Every call to the AI classifier is logged to an `ai_logs` table:
+
+| Column | Description |
+|--------|-------------|
+| `ai_moscow` | Label the model predicted |
+| `human_moscow` | Label the PM ultimately assigned |
+| `agreed` | 1 if they match, 0 if the PM overrode |
+| `latency_ms` | Round-trip time for the API call |
+
+This produces a live **agreement rate** and **confusion matrix** accessible at `/api/metrics`.
+
+### Feedback loop
+Human overrides are the feedback signal. When a PM changes an AI-suggested label, the disagreement is recorded. These rows can be used to:
+- Identify systematic misclassification (e.g. AI over-classifies `could` as `should`)
+- Refine the system prompt rubric based on real override patterns
+- Build a labeled dataset for fine-tuning a future custom classifier
+
+### Training approach
+PriorityOS uses **zero-shot prompt inference** — no custom model training. The PM rubric (MoSCoW definitions, VIP tier rules, source context) is encoded directly in the system prompt. This approach is appropriate here because:
+- Labeled training data is scarce at launch
+- Prompt iteration is faster than fine-tuning cycles
+- Domain knowledge (what "Must Have" means for this product) changes frequently
+
+### Go/No-Go thresholds
+The Dashboard tab shows a live **Go/No-Go verdict** based on AI vs. human agreement rate:
+
+| Verdict | Condition | Meaning |
+|---------|-----------|---------|
+| **GO** | ≥ 75% agreement | AI is reliable — proceed to wider rollout |
+| **REVIEW** | 50–74% agreement | Acceptable but prompt needs tuning |
+| **NO-GO** | < 50% agreement | AI is unreliable — do not use in production |
+| **Pending** | < 5 reviews | Insufficient data to decide |
+
+Exposed via `GET /api/metrics`:
+```json
+{
+  "total": 15,
+  "resolved": 15,
+  "agreed": 14,
+  "agreementRate": 93,
+  "avgLatencyMs": 3676,
+  "goNoGo": "go",
+  "thresholds": { "go": 75, "review": 50 },
+  "confusion": [
+    { "ai_moscow": "must", "human_moscow": "must", "count": 8 },
+    { "ai_moscow": "could", "human_moscow": "wont", "count": 1 }
+  ]
+}
+```
 
 ---
 
@@ -182,13 +240,30 @@ Intake → MoSCoW → RICE Score → Backlog → Themes → Strategy → Roadmap
 ```
 
 1. **Add issues** via the Intake tab or click "Load Samples" for demo data
-2. **Classify** each issue in the MoSCoW tab (manual or AI)
+2. **Classify** each issue in the MoSCoW tab (manual or AI) — every AI call is logged
 3. **Score** Must/Should issues in the RICE tab
 4. **Review** the ranked Backlog
 5. **Generate Themes** to cluster issues into strategic buckets
 6. **Build Strategy** — select a theme and generate its solution matrix
 7. **Plan Roadmap** — review Now/Next/Later columns, override as needed
 8. **Export to JIRA** — push issues directly to your sprint board
+9. **Monitor performance** — Dashboard → Go/No-Go panel shows live AI accuracy
+
+---
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/issues` | GET | All issues |
+| `/api/issues` | POST | Create issue (accepts `log_id` to link AI suggestion) |
+| `/api/issues/:id` | PATCH | Update MoSCoW, RICE, or roadmap column (triggers feedback log) |
+| `/api/classify` | POST | AI MoSCoW + RICE suggestion (returns `logId`, `latencyMs`) |
+| `/api/metrics` | GET | AI performance stats — agreement rate, latency, confusion matrix, Go/No-Go |
+| `/api/themes` | GET/POST | Manage problem theme clusters |
+| `/api/strategy` | POST | Generate 4-quadrant solution matrix for a theme |
+| `/api/roadmap` | GET | Issues grouped by Now/Next/Later |
+| `/api/eval/runs` | GET/POST | AI eval test runs |
 
 ---
 
@@ -198,6 +273,7 @@ Intake → MoSCoW → RICE Score → Backlog → Themes → Strategy → Roadmap
 issue-prioritization-tool/
 ├── server.js       # Express API + SQLite + Anthropic integration
 ├── index.html      # Single-page frontend (all JS inline)
+├── seed-ai.js      # Script to seed sample issues via the API
 ├── package.json
 ├── .env            # Your secrets (not committed)
 └── issues.db       # SQLite database (auto-created on first run)
@@ -209,9 +285,10 @@ issue-prioritization-tool/
 
 All AI features require `ANTHROPIC_API_KEY`. The app degrades gracefully — all manual workflows remain fully functional without it.
 
-| Feature | Model | Prompt caching |
-|---------|-------|---------------|
-| MoSCoW classification | Claude Haiku 4.5 | Yes |
-| RICE input suggestion | Claude Haiku 4.5 | Yes |
-| Theme clustering | Claude Haiku 4.5 | Yes |
-| Solution generation | Claude Haiku 4.5 | Yes |
+| Feature | Model | Logged |
+|---------|-------|--------|
+| MoSCoW classification | Claude Haiku 4.5 | Yes — agreement rate tracked |
+| RICE input suggestion | Claude Haiku 4.5 | No |
+| Theme clustering | Claude Haiku 4.5 | No |
+| Solution generation | Claude Haiku 4.5 | No |
+| Ground-truth eval | Claude Haiku 4.5 | Yes — per-run pass/fail |
