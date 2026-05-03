@@ -341,6 +341,34 @@ app.post('/api/issues', (req, res) => {
   res.status(201).json(toIssue(row));
 });
 
+// POST /api/import  — bulk CSV import
+app.post('/api/import', (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'rows array required' });
+
+  const validSources = new Set(['support','analytics','sales','internal','cs']);
+  const validTiers   = new Set(['standard','vip']);
+
+  const stmt = db.prepare(`INSERT INTO issues (title, desc, source, tier, hint, moscow) VALUES (?, ?, ?, ?, ?, ?)`);
+  const inserted = [];
+  const skipped  = [];
+
+  const importMany = db.transaction(() => {
+    for (const r of rows) {
+      const title = (r.title || '').trim();
+      if (!title) { skipped.push({ row: r, reason: 'missing title' }); continue; }
+      const source = validSources.has(r.source) ? r.source : 'support';
+      const tier   = validTiers.has(r.tier)     ? r.tier   : 'standard';
+      const desc   = (r.description || r.desc || '').trim();
+      const result = stmt.run(title, desc, source, tier, '', null);
+      inserted.push(db.prepare('SELECT * FROM issues WHERE id = ?').get(result.lastInsertRowid));
+    }
+  });
+
+  importMany();
+  res.status(201).json({ inserted: inserted.map(toIssue), skipped, count: inserted.length });
+});
+
 // PATCH /api/issues/:id
 app.patch('/api/issues/:id', (req, res) => {
   const { id } = req.params;

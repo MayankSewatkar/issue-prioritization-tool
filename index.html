@@ -264,6 +264,7 @@
       <div class="flex items-center gap-2">
         <span class="text-xs hidden" style="color:var(--text-3)" id="ai-status-text"></span>
         <button onclick="seedData()" class="btn-ghost text-xs">Load Samples</button>
+        <button onclick="openCsvModal()" class="btn-ghost text-xs">↑ Import CSV</button>
         <button onclick="openJiraModal()" id="btn-jira-header" class="btn-ghost text-xs hidden" style="color:#2D55B8">⬆ JIRA</button>
         <button onclick="clearAll()" class="btn-ghost text-xs" style="color:#C05046">Clear All</button>
         <button onclick="openAddIssue()" class="btn-primary btn-sm">
@@ -975,6 +976,72 @@
   </div>
 </div>
 
+<!-- ══ MODAL: CSV IMPORT ══ -->
+<div id="modal-csv" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:640px;width:100%">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <div class="font-semibold text-slate-800">Import Issues from CSV</div>
+        <div class="text-xs text-slate-400 mt-0.5">Required columns: <code class="bg-slate-100 px-1 rounded">title</code> &nbsp;Optional: <code class="bg-slate-100 px-1 rounded">description</code> <code class="bg-slate-100 px-1 rounded">source</code> <code class="bg-slate-100 px-1 rounded">tier</code></div>
+      </div>
+      <button onclick="closeModal('modal-csv')" class="btn-ghost" style="padding:5px 8px;font-size:20px;line-height:1;color:#94A3B8">×</button>
+    </div>
+
+    <!-- Drop zone -->
+    <div id="csv-dropzone" onclick="document.getElementById('csv-file-input').click()"
+      class="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer mb-4"
+      style="border-color:var(--border-2);background:var(--surface-2);padding:32px;transition:border-color .15s"
+      ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+      ondragleave="this.style.borderColor='var(--border-2)'"
+      ondrop="handleCsvDrop(event)">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5 5 5M12 5v11" stroke="#94A3B8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="text-sm font-medium text-slate-500">Drop a CSV file here, or click to browse</div>
+      <div class="text-xs text-slate-400">Accepts .csv files — first row must be a header</div>
+      <input type="file" id="csv-file-input" accept=".csv,text/csv" class="hidden" onchange="handleCsvFile(this.files[0])">
+    </div>
+
+    <!-- Template download -->
+    <div class="flex items-center gap-2 mb-4">
+      <button onclick="downloadCsvTemplate()" class="btn-ghost text-xs" style="color:var(--primary)">
+        ↓ Download template CSV
+      </button>
+      <span class="text-xs text-slate-400">— or paste your own with matching column names</span>
+    </div>
+
+    <!-- Preview table -->
+    <div id="csv-preview" class="hidden mb-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-xs font-semibold text-slate-600" id="csv-preview-label">Preview</div>
+        <button onclick="clearCsvPreview()" class="text-xs text-slate-400 hover:text-slate-600">✕ Clear</button>
+      </div>
+      <div class="rounded-lg border overflow-hidden" style="border-color:var(--border)">
+        <div class="overflow-x-auto" style="max-height:220px">
+          <table class="w-full text-xs">
+            <thead style="background:var(--surface-2)">
+              <tr>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500">Title</th>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500">Description</th>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500">Source</th>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500">Tier</th>
+              </tr>
+            </thead>
+            <tbody id="csv-preview-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="csv-parse-error" class="hidden mt-2 text-xs text-rose-500"></div>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('modal-csv')" class="btn-secondary">Cancel</button>
+      <button id="btn-csv-import" onclick="submitCsvImport()" class="btn-primary" disabled>
+        <span id="csv-import-spinner" class="spinner hidden"></span>
+        <span id="csv-import-label">Import Issues</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '';
 let issues = [];
@@ -1392,6 +1459,139 @@ async function seedData() {
   issues = await api('POST', '/api/seed');
   renderAll();
   showToast('Sample data loaded — 10 issues with pre-set scores');
+}
+
+// ─── CSV IMPORT ──────────────────────────────────────────────────────────────
+
+let csvParsedRows = [];
+
+function openCsvModal() {
+  clearCsvPreview();
+  document.getElementById('modal-csv').classList.remove('hidden');
+}
+
+function clearCsvPreview() {
+  csvParsedRows = [];
+  document.getElementById('csv-preview').classList.add('hidden');
+  document.getElementById('csv-preview-body').innerHTML = '';
+  document.getElementById('csv-parse-error').classList.add('hidden');
+  document.getElementById('csv-file-input').value = '';
+  document.getElementById('btn-csv-import').disabled = true;
+  document.getElementById('csv-import-label').textContent = 'Import Issues';
+}
+
+function handleCsvDrop(e) {
+  e.preventDefault();
+  document.getElementById('csv-dropzone').style.borderColor = 'var(--border-2)';
+  const file = e.dataTransfer.files[0];
+  if (file) handleCsvFile(file);
+}
+
+function handleCsvFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => parseCsvText(e.target.result);
+  reader.readAsText(file);
+}
+
+function parseCsvText(text) {
+  const errEl = document.getElementById('csv-parse-error');
+  errEl.classList.add('hidden');
+  try {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) throw new Error('File must have a header row and at least one data row.');
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const titleIdx = headers.indexOf('title');
+    if (titleIdx === -1) throw new Error('Missing required column: "title"');
+
+    const descIdx   = headers.indexOf('description') > -1 ? headers.indexOf('description') : headers.indexOf('desc');
+    const sourceIdx = headers.indexOf('source');
+    const tierIdx   = headers.indexOf('tier');
+
+    const validSources = new Set(['support','analytics','sales','internal','cs']);
+    const validTiers   = new Set(['standard','vip']);
+
+    csvParsedRows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = splitCsvLine(lines[i]);
+      const title = (cols[titleIdx] || '').trim();
+      if (!title) continue;
+      csvParsedRows.push({
+        title,
+        description: descIdx > -1 ? (cols[descIdx] || '').trim() : '',
+        source: validSources.has(cols[sourceIdx]) ? cols[sourceIdx] : 'support',
+        tier:   validTiers.has(cols[tierIdx])     ? cols[tierIdx]   : 'standard',
+      });
+    }
+
+    if (!csvParsedRows.length) throw new Error('No valid rows found — check that "title" column is not empty.');
+
+    const tbody = document.getElementById('csv-preview-body');
+    tbody.innerHTML = csvParsedRows.map((r, i) => `
+      <tr style="border-top:1px solid var(--border);${i%2===1?'background:var(--surface-2)':''}">
+        <td class="px-3 py-2 font-medium text-slate-700" style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.title)}</td>
+        <td class="px-3 py-2 text-slate-500" style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.description) || '<span class="text-slate-300">—</span>'}</td>
+        <td class="px-3 py-2 text-slate-500">${r.source}</td>
+        <td class="px-3 py-2 text-slate-500">${r.tier}</td>
+      </tr>`).join('');
+
+    document.getElementById('csv-preview-label').textContent = `Preview — ${csvParsedRows.length} row${csvParsedRows.length !== 1 ? 's' : ''} ready to import`;
+    document.getElementById('csv-preview').classList.remove('hidden');
+    document.getElementById('btn-csv-import').disabled = false;
+    document.getElementById('csv-import-label').textContent = `Import ${csvParsedRows.length} Issue${csvParsedRows.length !== 1 ? 's' : ''}`;
+  } catch(err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+    document.getElementById('csv-preview').classList.remove('hidden');
+  }
+}
+
+function splitCsvLine(line) {
+  const cols = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function submitCsvImport() {
+  if (!csvParsedRows.length) return;
+  const btn = document.getElementById('btn-csv-import');
+  const spin = document.getElementById('csv-import-spinner');
+  btn.disabled = true; spin.classList.remove('hidden');
+  try {
+    const result = await api('POST', '/api/import', { rows: csvParsedRows });
+    closeModal('modal-csv');
+    await loadIssues();
+    showToast(`Imported ${result.count} issue${result.count !== 1 ? 's' : ''}${result.skipped.length ? ` (${result.skipped.length} skipped)` : ''}`);
+    switchTab('intake');
+  } catch(e) {
+    showToast('Import failed', 'error');
+    btn.disabled = false;
+  }
+  spin.classList.add('hidden');
+}
+
+function downloadCsvTemplate() {
+  const csv = `title,description,source,tier
+Login page crashes on mobile,"Users on iOS Safari 17 can't log in — white screen after submit",support,vip
+Dashboard loads slowly,"Takes 8+ seconds for accounts with over 500 issues",analytics,standard
+Add dark mode,"Several users have requested a dark mode option",internal,standard`;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'priorityos-import-template.csv';
+  a.click();
 }
 
 function filterBacklog(f) {
