@@ -1241,7 +1241,7 @@ function renderBacklog() {
       </div>`).join('')}`;
 }
 
-function renderDashboard() {
+async function renderDashboard() {
   const classified = issues.filter(i => i.moscow).length;
   const noise = issues.filter(i => i.moscow === 'could' || i.moscow === 'wont').length;
   const forwarded = issues.filter(i => i.moscow === 'must' || i.moscow === 'should').length;
