@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // ─── DATABASE ────────────────────────────────────────────────────────────────
-const db = new Database('issues.db');
+const db = new Database(process.env.DB_PATH || 'issues.db');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS issues (
