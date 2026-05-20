@@ -85,6 +85,7 @@ db.exec(`
 
 // ─── ANTHROPIC CLIENT ────────────────────────────────────────────────────────
 const hasApiKey = !!process.env.ANTHROPIC_API_KEY;
+console.log(`  DEBUG: ANTHROPIC_API_KEY present=${hasApiKey}, prefix=${process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.slice(0,10) + '...' : 'MISSING'}`);
 const anthropic = hasApiKey ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
 // Shared system prompt for classification — cached for cost efficiency
