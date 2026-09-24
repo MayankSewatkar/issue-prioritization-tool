@@ -1,6 +1,6 @@
 # PriorityOS — AI-Powered PM Issue Triage
 
-**Live demo → [priority-os-production.up.railway.app](https://priority-os-production.up.railway.app)**
+**Live demo → [issue-prioritization-tool.onrender.com](https://issue-prioritization-tool.onrender.com)**
 
 A full-stack product management triage tool that takes raw incoming issues and runs them through a structured PM workflow: MoSCoW classification → RICE scoring → theme clustering → solution strategy → roadmap planning → JIRA export.
 
@@ -168,7 +168,7 @@ Exposed via `GET /api/metrics`:
 | AI | Anthropic Claude Haiku 4.5 |
 | Frontend | Vanilla JS + Tailwind CDN |
 | Fonts | DM Sans + DM Mono |
-| Hosting | Railway |
+| Hosting | Render |
 
 ---
 
@@ -213,36 +213,31 @@ Open `http://localhost:3000` in your browser.
 
 ---
 
-## Deploy to Railway
+## Deploy to Render
 
-### 1. Install Railway CLI and login
+### 1. Connect the repo
 
-```bash
-npm install -g @railway/cli
-railway login
-```
+In the [Render dashboard](https://dashboard.render.com): **New → Web Service** → connect your GitHub account → select `issue-prioritization-tool`. Render auto-detects `render.yaml` in the repo root (Node runtime, `npm install` build, `npm start` start command).
 
-### 2. Link and deploy
+### 2. Set environment variables
 
-```bash
-railway init        # create a new project
-railway up          # deploy
-railway domain      # generate a public URL
-```
+`render.yaml` marks `ANTHROPIC_API_KEY` as `sync: false`, so Render will prompt for it during setup. Add it (and, optionally, the JIRA vars below) under the service's **Environment** tab:
 
-### 3. Set environment variables
-
-```bash
-railway variables set ANTHROPIC_API_KEY=sk-ant-...
+```env
+ANTHROPIC_API_KEY=sk-ant-...
 
 # Optional JIRA
-railway variables set JIRA_BASE_URL=https://yourorg.atlassian.net
-railway variables set JIRA_EMAIL=you@company.com
-railway variables set JIRA_API_TOKEN=your_token
-railway variables set JIRA_PROJECT_KEY=MYPROJ
+JIRA_BASE_URL=https://yourorg.atlassian.net
+JIRA_EMAIL=you@company.com
+JIRA_API_TOKEN=your_token
+JIRA_PROJECT_KEY=MYPROJ
 ```
 
-Railway auto-injects `PORT` — the app reads it via `process.env.PORT`.
+### 3. Deploy
+
+Click **Create Web Service**. Render auto-injects `PORT` — the app reads it via `process.env.PORT` — and redeploys automatically on every push to `main`.
+
+Note: the free tier's filesystem is ephemeral, so the SQLite DB (`issues.db`) resets on each redeploy/restart. Fine for a demo; if you need persistent data, move to Postgres or a paid Render disk.
 
 ---
 
